@@ -5,7 +5,7 @@ import net.finmath.functions.NormalDistribution;
 public class CallOption {
 
 	
-	private final double alpha; //initial volatility
+	private final double alpha; 
 	private final double beta;
 	private final double initialForward;
 	private final double rho;	
@@ -16,9 +16,6 @@ public class CallOption {
 	private final double riskFreeRate;
 	
 
-	//j is set to 2 to extract the characteristic function
-
-	//Two Factor Bates Model
 	public CallOption(
 			double alpha,
 			double beta,

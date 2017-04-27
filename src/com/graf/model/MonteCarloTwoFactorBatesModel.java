@@ -67,20 +67,6 @@ public class MonteCarloTwoFactorBatesModel extends AbstractModelBates implements
 	private RandomVariableInterface[]	initialValueVector	= new RandomVariableInterface[3];
 	private TimeDiscretizationInterface timeDiscretization;
 	
-
-	/**
-	 * Create a Heston model.
-	 * 
-	 * @param initialValue Spot value.
-	 * @param riskFreeRate The risk free rate.
-	 * @param volatility The log volatility.
-	 * @param discountRate The discount rate used in the numeraire.
-	 * @param theta The longterm mean reversion level of V (a reasonable value is volatility*volatility).
-	 * @param kappa The mean reversion speed.
-	 * @param xi The volatility of the volatility (of V).
-	 * @param rho The instantaneous correlation of the Brownian drivers (aka leverage).
-	 * @param scheme The truncation scheme, that is, either reflection (V &rarr; abs(V)) or truncation (V &rarr; max(V,0)).
-	 */
 	public MonteCarloTwoFactorBatesModel(
 			TimeDiscretizationInterface timeDiscretization,
 			int numberOfPaths,
@@ -146,18 +132,7 @@ public class MonteCarloTwoFactorBatesModel extends AbstractModelBates implements
 		this.setProcess(process);
 	}
 
-	/**
-	 * Create a Heston model.
-	 * 
-	 * @param initialValue Spot value.
-	 * @param riskFreeRate The risk free rate.
-	 * @param volatility The log volatility.
-	 * @param alphaOne The longterm mean reversion level of V (a reasonable value is volatility*volatility).
-	 * @param kappa The mean reversion speed.
-	 * @param sigmaOne The volatility of the volatility (of V).
-	 * @param rhoOne The instantaneous correlation of the Brownian drivers (aka leverage).
-	 * @param scheme The truncation scheme, that is, either reflection (V &rarr; abs(V)) or truncation (V &rarr; max(V,0)).
-	 */
+
 
 
 	public RandomVariableInterface[] getInitialState() {
