@@ -45,12 +45,13 @@ public class CallOption {
 		
 		double x = Math.log( ( Math.sqrt(1-2*rho*z + z*z) + z - rho)/(1-rho) );
 		
-		double help1 = (1-beta)*Math.log(initialForward/strike); //to shorten the formula of volatility
+		double help1 = (1-beta)*Math.log(initialForward/strike); //to shorten the formula
 		
-		double volatility = (alpha/(Math.pow(initialForward*strike, 0.5*(1-beta))*
-									(1+help1*help1/24 + help1*help1*help1*help1/1920)
-									)
-							)*(z/x)*
+		double taylor = 1+help1*help1/24 + help1*help1*help1*help1/1920;
+		
+		double impliedVolatility = (alpha/(Math.pow(initialForward*strike, 0.5*(1-beta))*taylor)
+							)*
+							(z/x)*
 							(1+ maturity*((1-beta)*(1-beta)*alpha*alpha/(24*Math.pow(initialForward*strike, 1-beta))
 										  + rho*beta*v*alpha/(4*Math.pow(initialForward*strike, 0.5*(1-beta)))
 										  + (2-3*rho*rho)*v*v/24
@@ -58,9 +59,9 @@ public class CallOption {
 							)
 							;
 		
-		double d1 = (Math.log(initialForward/strike) + 0.5*volatility*volatility*maturity)/(volatility*Math.sqrt(maturity));
+		double d1 = (Math.log(initialForward/strike) + 0.5*impliedVolatility*impliedVolatility*maturity)/(impliedVolatility*Math.sqrt(maturity));
 		
-		double d2 = (Math.log(initialForward/strike) - 0.5*volatility*volatility*maturity)/(volatility*Math.sqrt(maturity));
+		double d2 = (Math.log(initialForward/strike) - 0.5*impliedVolatility*impliedVolatility*maturity)/(impliedVolatility*Math.sqrt(maturity));
 		
 		double discountFactor = Math.exp(-riskFreeRate * maturity);
 		
