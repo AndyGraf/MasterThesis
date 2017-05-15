@@ -10,7 +10,7 @@ public class LevenbergTest {
 
 	public static void main(String[] args) {
         
-		//initial parameters
+		//initial parameters 
         double alphaOne     = 0.1;
         double alphaTwo		= 0;
         double betaOne      = 0.5;
