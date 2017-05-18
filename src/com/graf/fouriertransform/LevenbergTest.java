@@ -103,6 +103,44 @@ public class LevenbergTest {
 		 						;
 			}
 		};
+		
+//      double[] strikes		= new double[] {90, 91,92,93,94};
+//		AbstractProductFourierTransform[] europeanVector = new AbstractProductFourierTransform[10];
+//
+//        for(int i = 0; i < strikes.length; i++ ){
+//        	europeanVector[i] = new EuropeanOption(maturity, strikes[i]);
+//        }
+//        
+//        
+//	 	LevenbergMarquardt optimizer = new LevenbergMarquardt() {
+//
+//		 	public void setValues(double[] parameters, double[] values) {
+//		 		for(int i = 0; i < values.length; i++ ){
+//		 			values[i] = Math.exp(-riskFreeRate*maturity)*
+//		 					europeanVector[i].getValue(
+//		 							new TwoFactorBatesModelCF(
+//		 									parameters[0],
+//		 									parameters[1],
+//		 									parameters[2],
+//		 									parameters[3],
+//		 									parameters[4],
+//		 									parameters[5],
+//		 									parameters[6],
+//		 									parameters[7],
+//		 									parameters[8],
+//		 									parameters[9],
+//		 									parameters[10],
+//		 									parameters[11],
+//		 									parameters[12],
+//		 									volatilityOne,
+//		 									volatilityTwo,
+//		 									initialPrice,
+//		 									riskFreeRate)
+//		 							)
+//		 					;
+//		 		}
+//			}
+//		};
 
 	  	optimizer.setInitialParameters(initialParameters);
 	  	optimizer.setWeights(new double[] { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1});
@@ -170,6 +208,11 @@ public class LevenbergTest {
 					riskFreeRate);
         System.out.println("\nTargetvalue: " + targetValues[0] + "\t result: " + Math.exp(-riskFreeRate*maturity)*european.getValue(bates));
         System.out.println("Targetvalue: " + targetValues[1] + "\t result: " + Math.exp(-riskFreeRate*maturity)*european2.getValue(bates));
+        
+        
+//        for(int i = 0; i < targetValues.length; i++ ){
+//        	System.out.println("\nTargetvalue: " + targetValues[i] + "\t result: " + Math.exp(-riskFreeRate*maturity)*europeanVector[i].getValue(bates));
+//        }
 	}
 }
 
