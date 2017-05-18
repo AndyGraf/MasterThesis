@@ -23,8 +23,11 @@ public class LevenbergTest {
         double lambdaOne    = 1;
         double lambdaTwo    = 2;
  
-        double k       			= -0.5;
-        double delta     	   = Math.sqrt(0.3);
+        double k       		= -0.5;
+        double delta   		= Math.sqrt(0.3);
+        
+        //set known constants
+        
         double volatilityOne   = 0.2;
         double volatilityTwo   = 0.28;        
         
@@ -46,9 +49,7 @@ public class LevenbergTest {
 			lambdaOne,
 			lambdaTwo,
 			k,
-			delta,
-			volatilityOne,
-			volatilityTwo};
+			delta};
         
         AbstractProductFourierTransform european = new EuropeanOption(maturity, strike);
         AbstractProductFourierTransform european2 = new EuropeanOption(maturity, strike+5);
@@ -72,39 +73,39 @@ public class LevenbergTest {
 		 										parameters[10],
 		 										parameters[11],
 		 										parameters[12],
-		 										parameters[13],
-		 										parameters[14],
+		 										volatilityOne,
+		 										volatilityTwo,
 		 										initialPrice,
 		 										riskFreeRate)
 		 								)
 		 					;
 		 		values[1] = Math.exp(-riskFreeRate*maturity)*
- 						european2.getValue(
- 								new TwoFactorBatesModelCF(
- 										parameters[0],
- 										parameters[1],
- 										parameters[2],
- 										parameters[3],
- 										parameters[4],
- 										parameters[5],
- 										parameters[6],
- 										parameters[7],
- 										parameters[8],
- 										parameters[9],
- 										parameters[10],
- 										parameters[11],
- 										parameters[12],
- 										parameters[13],
- 										parameters[14],
- 										initialPrice,
- 										riskFreeRate)
- 								)
- 					;
+		 						european2.getValue(
+		 								new TwoFactorBatesModelCF(
+		 										parameters[0],
+		 										parameters[1],
+		 										parameters[2],
+		 										parameters[3],
+		 										parameters[4],
+		 										parameters[5],
+		 										parameters[6],
+		 										parameters[7],
+		 										parameters[8],
+		 										parameters[9],
+		 										parameters[10],
+		 										parameters[11],
+		 										parameters[12],
+		 										volatilityOne,
+		 										volatilityTwo,
+		 										initialPrice,
+		 										riskFreeRate)
+		 								)
+		 						;
 			}
 		};
 
 	  	optimizer.setInitialParameters(initialParameters);
-	  	optimizer.setWeights(new double[] { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1});
+	  	optimizer.setWeights(new double[] { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1});
 	  	optimizer.setMaxIteration(100);
 	  	
 	  	
@@ -133,9 +134,7 @@ public class LevenbergTest {
 							"\n\tlambdaOne: \t\t" + bestParameters[9] + 
 							"\n\tlambdaTwo: \t\t" + bestParameters[10] + 
 							"\n\tk: \t\t\t" + bestParameters[11] + 
-							"\n\tdelta: \t\t\t" + bestParameters[12] + 
-							"\n\tvolatilityOne: \t\t" + bestParameters[13] + 
-							"\n\tvolatilityTwo: \t\t" + bestParameters[14]);
+							"\n\tdelta: \t\t\t" + bestParameters[12]);
 
 //		System.out.println( "\tdouble alphaOne \t\t=" + bestParameters[0] +";"+ 
 //							"\n\tdouble alphaTwo \t\t=" + bestParameters[1] +";"+ 
@@ -149,9 +148,7 @@ public class LevenbergTest {
 //							"\n\tdouble lambdaOne \t\t=" + bestParameters[9] +";"+ 
 //							"\n\tdouble lambdaTwo \t\t=" + bestParameters[10] +";"+ 
 //							"\n\tdouble k \t\t\t=" + bestParameters[11] +";"+ 
-//							"\n\tdouble delta \t\t\t=" + bestParameters[12] +";"+ 
-//							"\n\tdouble volatilityOne \t\t=" + bestParameters[13] +";"+ 
-//							"\n\tdouble volatilityTwo \t\t=" + bestParameters[14]+";");
+//							"\n\tdouble delta \t\t\t=" + bestParameters[12] +";");
 		
 		ProcessCharacteristicFunctionInterface bates = new TwoFactorBatesModelCF(
 					bestParameters[0],
@@ -167,8 +164,8 @@ public class LevenbergTest {
 					bestParameters[10],
 					bestParameters[11],
 					bestParameters[12],
-					bestParameters[13],
-					bestParameters[14],
+					volatilityOne,
+					volatilityTwo,
 					initialPrice,
 					riskFreeRate);
         System.out.println("\nTargetvalue: " + targetValues[0] + "\t result: " + Math.exp(-riskFreeRate*maturity)*european.getValue(bates));
