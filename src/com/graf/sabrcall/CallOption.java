@@ -15,7 +15,9 @@ public class CallOption {
 	private final double maturity;
 	private final double riskFreeRate;
 	
-
+	private final double impliedVola;
+	
+	//for the model
 	public CallOption(
 			double alpha,
 			double beta,
@@ -34,7 +36,29 @@ public class CallOption {
 		this.strike			= strike;
 		this.maturity		= maturity;
 		this.riskFreeRate	= riskFreeRate;
+		this.impliedVola	= -1;
 	}
+	
+	//for given implied volatilities
+	public CallOption(
+			double initialForward,
+			double rho,
+			double v,
+			double strike,
+			double maturity,
+			double riskFreeRate) {
+		super();
+		this.alpha			= 0;
+		this.beta			= 0;
+		this.initialForward	= initialForward;
+		this.rho			= rho;
+		this.v				= v;
+		this.strike			= strike;
+		this.maturity		= maturity;
+		this.riskFreeRate	= riskFreeRate;
+		this.impliedVola	= 0;
+	}
+	
 	
 	public double getPrice(){
 		
