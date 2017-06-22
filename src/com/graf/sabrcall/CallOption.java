@@ -15,7 +15,7 @@ public class CallOption {
 	private final double maturity;
 	private final double riskFreeRate;
 	
-	private final double impliedVola;
+	private final double volatility;
 	
 	//for the model
 	public CallOption(
@@ -36,41 +36,44 @@ public class CallOption {
 		this.strike			= strike;
 		this.maturity		= maturity;
 		this.riskFreeRate	= riskFreeRate;
-		this.impliedVola	= -1;
+		this.volatility		= -1;
 	}
 	
-	//for given implied volatilities
+	//for given implied volatility
 	public CallOption(
 			double initialForward,
-			double rho,
-			double v,
-			double strike,
+			double volatility,
 			double maturity,
-			double riskFreeRate) {
+			double strike,
+			double discountCurve) {
 		super();
 		this.alpha			= 0;
 		this.beta			= 0;
 		this.initialForward	= initialForward;
-		this.rho			= rho;
-		this.v				= v;
+		this.rho			= 0;
+		this.v				= 0;
 		this.strike			= strike;
 		this.maturity		= maturity;
-		this.riskFreeRate	= riskFreeRate;
-		this.impliedVola	= 0;
+		this.riskFreeRate	= discountCurve;
+		this.volatility		= volatility;
 	}
 	
 	
 	public double getPrice(){
 		
-		double z = (v/alpha) * Math.pow(initialForward*strike, 0.5*(1-beta))*Math.log(initialForward/strike);
+		double impliedVolatility;
 		
-		double x = Math.log( ( Math.sqrt(1-2*rho*z + z*z) + z - rho)/(1-rho) );
+		if(volatility < 0){
 		
-		double help1 = (1-beta)*Math.log(initialForward/strike); //to shorten the formula
+			double z = (v/alpha) * Math.pow(initialForward*strike, 0.5*(1-beta))*Math.log(initialForward/strike);
 		
-		double taylor = 1+help1*help1/24 + help1*help1*help1*help1/1920;
+			double x = Math.log( ( Math.sqrt(1-2*rho*z + z*z) + z - rho)/(1-rho) );
 		
-		double impliedVolatility = (alpha/(Math.pow(initialForward*strike, 0.5*(1-beta))*taylor)
+			double help1 = (1-beta)*Math.log(initialForward/strike); //to shorten the formula
+		
+			double taylor = 1+help1*help1/24 + help1*help1*help1*help1/1920;
+		
+			impliedVolatility = (alpha/(Math.pow(initialForward*strike, 0.5*(1-beta))*taylor)
 							)*
 							(z/x)*
 							(1+ maturity*((1-beta)*(1-beta)*alpha*alpha/(24*Math.pow(initialForward*strike, 1-beta))
@@ -79,12 +82,18 @@ public class CallOption {
 										 )
 							)
 							;
+		}
+		else{impliedVolatility = volatility;}
 		
 		double d1 = (Math.log(initialForward/strike) + 0.5*impliedVolatility*impliedVolatility*maturity)/(impliedVolatility*Math.sqrt(maturity));
 		
 		double d2 = (Math.log(initialForward/strike) - 0.5*impliedVolatility*impliedVolatility*maturity)/(impliedVolatility*Math.sqrt(maturity));
 		
-		double discountFactor = Math.exp(-riskFreeRate * maturity);
+		double discountFactor;
+		
+		if(volatility < 0){
+			discountFactor = Math.exp(-riskFreeRate * maturity);
+		}else{discountFactor = riskFreeRate;}
 		
 		return discountFactor*(initialForward*NormalDistribution.cumulativeDistribution(d1) - strike * NormalDistribution.cumulativeDistribution(d2));
 	}
