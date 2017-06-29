@@ -14,25 +14,25 @@ public class LevenbergTest {
 	public static void main(String[] args) throws IOException {
         
 		//initial parameters  
-        double alphaOne     = 0.1;
-        double alphaTwo		= 0;
-        double betaOne      = 0.5;
-        double betaTwo      = 0.2;
-        double sigmaOne     = 0.3;
-        double sigmaTwo     = 0.4;
-        double rhoOne       = -0.8;
-        double rhoTwo       = -0.6;
-        double lambdaZero   = 0.5;
-        double lambdaOne    = 1;
-        double lambdaTwo    = 2;
+        double alphaOne     = 0.01;
+        double alphaTwo		= 0.04;
+        double betaOne      = 0.91;
+        double betaTwo      = 1.76;
+        double sigmaOne     = 0.582;
+        double sigmaTwo     = 0.346;
+        double rhoOne       = -0.848;
+        double rhoTwo       = -0.402;
+        double lambdaZero   = 0.1143;
+        double lambdaOne    = 1.56;
+        double lambdaTwo    = 0.28;
  
-        double k       		= -0.5;
-        double delta   		= Math.sqrt(0.3);
+        double k       		= -0.057;
+        double delta   		= 0.102;
         
         //set known constants
         
-        double volatilityOne   = 0.2;
-        double volatilityTwo   = 0.28;        
+        double volatilityOne   = 0.00963;
+        double volatilityTwo   = 0.01352;      
         
 //        double initialPrice = 100;
 //        double riskFreeRate = 0.05;
@@ -128,7 +128,7 @@ public class LevenbergTest {
 
 	  	optimizer.setInitialParameters(initialParameters);
 	  	optimizer.setWeights(weights);
-	  	optimizer.setMaxIteration(2);
+	  	optimizer.setMaxIteration(100);
 	  	
 	  	optimizer.setTargetValues(targetValues);
 	  
@@ -192,7 +192,7 @@ public class LevenbergTest {
 //        	System.out.println("\nTargetvalue: " + targetValues[i] + "\t result: " + europeanMatrix[i].getValue(bates));
 //        }
 		double [] values = new double[maturities.length*strikes.length];
-		
+		double mse = 0;
 		for(int i = 0; i < maturities.length; i++){
 			for(int j = 0; j < strikes.length; j++){
 				int index2 = maturities[i]+tenor;
@@ -217,10 +217,12 @@ public class LevenbergTest {
  													-Math.log(sheetdata.getSwapAnnuity(maturities[i], tenor))/maturities[i])
  												)
  				;
+				mse +=(values[i*strikes.length + j]-targetValues[i*strikes.length + j])*(values[i*strikes.length + j]-targetValues[i*strikes.length + j]);
 				System.out.print(values[i*strikes.length + j] + "\t");
 			}
 			System.out.println();
  		}
+		System.out.println(Math.sqrt(mse));
 	}
 }
 
