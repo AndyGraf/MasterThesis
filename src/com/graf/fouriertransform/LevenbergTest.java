@@ -2,8 +2,6 @@ package com.graf.fouriertransform;
 
 import java.io.IOException;
 
-import com.graf.sabrcall.CallOption;
-
 import net.finmath.fouriermethod.models.ProcessCharacteristicFunctionInterface;
 import net.finmath.fouriermethod.products.AbstractProductFourierTransform;
 import net.finmath.optimizer.LevenbergMarquardt;
@@ -23,7 +21,7 @@ public class LevenbergTest {
         double rhoOne       = -0.848;
         double rhoTwo       = -0.402;
         double lambdaZero   = 0.1143;
-        double lambdaOne    = 1.56;
+        double lambdaOne    = 81.56;
         double lambdaTwo    = 0.28;
  
         double k       		= -0.057;
@@ -58,28 +56,24 @@ public class LevenbergTest {
         
 		SABRdata sheetdata = new SABRdata();
 		
-		int tenor = 5;
-		double[][] forwardcurve = sheetdata.getForwardCurveData();
-		double[][] discount = sheetdata.getDiscountCurveData();
+		int tenor = 10;
 		double[][] volatilities = sheetdata.getSmileData(tenor);
 		int[] maturities = {1, 2, 5, 10, 15, 20};
+//		int[] maturities = {1};
 		double[] strikes = {-1, -0.5, -0.25, 0, 0.25, 0.5, 1, 1.5, 2};
 		AbstractProductFourierTransform[][] europeanMatrix = new AbstractProductFourierTransform[maturities.length][strikes.length];
 		
 		double [] targetValues = new double[maturities.length*strikes.length];
-		double [] bachelierValues = new double[maturities.length*strikes.length];
+//		double [] bachelierValues = new double[maturities.length*strikes.length];
 		
 		double [] weights = new double[maturities.length*strikes.length];
 		for(int w = 0; w < weights.length; w++){weights[w] = 1;};
-		int index;
-		
 
 		for(int i = 0; i < maturities.length; i++){
 			for(int j = 0; j < strikes.length; j++){
-				index = maturities[i]+tenor;
-				targetValues[i*strikes.length + j] = net.finmath.functions.AnalyticFormulas.blackScholesGeneralizedOptionValue(forwardcurve[index][2]+1.5,volatilities[i][j],maturities[i], strikes[j]+1.5,sheetdata.getSwapAnnuity(maturities[i], tenor));
-				bachelierValues[i*strikes.length + j] = net.finmath.functions.AnalyticFormulas.bachelierOptionValue(forwardcurve[index][2]+1.5,volatilities[i][j],maturities[i], strikes[j]+1.5,sheetdata.getSwapAnnuity(maturities[i], tenor));
-				europeanMatrix[i][j] = new EuropeanOption(maturities[i], strikes[j]+1.5, -Math.log(sheetdata.getSwapAnnuity(maturities[i], tenor))/maturities[i]);
+				targetValues[i*strikes.length + j] = net.finmath.functions.AnalyticFormulas.blackScholesGeneralizedOptionValue(sheetdata.getForwardSwapRate(maturities[i], tenor)+1.5,volatilities[i][j],maturities[i], strikes[j]+1.5,sheetdata.getSwapAnnuity(maturities[i], tenor));
+//				bachelierValues[i*strikes.length + j] = net.finmath.functions.AnalyticFormulas.bachelierOptionValue(forwardcurve[index][2]+1.5,volatilities[i][j],maturities[i], strikes[j]+1.5,sheetdata.getSwapAnnuity(maturities[i], tenor));
+				europeanMatrix[i][j] = new EuropeanOption(maturities[i], strikes[j]+1.5, sheetdata.getSwapAnnuity(maturities[i], tenor));
 				System.out.print(targetValues[i*strikes.length + j] + "\t");
 			}
 			System.out.println();
@@ -93,7 +87,6 @@ public class LevenbergTest {
 		 	public void setValues(double[] parameters, double[] values) {
 		 		for(int i = 0; i < maturities.length; i++){
 					for(int j = 0; j < strikes.length; j++){
-						int index = maturities[i]+tenor;
 						try {
 							values[i*strikes.length + j] = europeanMatrix[i][j].getValue(
 																new TwoFactorBatesModelCF(
@@ -112,15 +105,16 @@ public class LevenbergTest {
 																parameters[12],
 																volatilityOne,
 																volatilityTwo,
-																forwardcurve[index][2]+1.5,
-																-Math.log(sheetdata.getSwapAnnuity(maturities[i], tenor))/maturities[i])
+																sheetdata.getForwardSwapRate(maturities[i], tenor)+1.5,
+																-Math.log(sheetdata.getSwapAnnuity(maturities[i], tenor)/tenor)/maturities[i])
 															)
 							;
+							
 						} catch (IOException e) {
 							// TODO Auto-generated catch block
 							e.printStackTrace();
 						}
-						//System.out.println(values[i*strikes.length + j] + "\t");
+//						System.out.println((values[i*strikes.length + j]-targetValues[i*strikes.length + j])*(values[i*strikes.length + j]-targetValues[i*strikes.length + j]));
 					}
 		 		}
 			}
@@ -128,7 +122,7 @@ public class LevenbergTest {
 
 	  	optimizer.setInitialParameters(initialParameters);
 	  	optimizer.setWeights(weights);
-	  	optimizer.setMaxIteration(100);
+	  	optimizer.setMaxIteration(0);
 	  	
 	  	optimizer.setTargetValues(targetValues);
 	  
@@ -191,11 +185,11 @@ public class LevenbergTest {
 //        for(int i = 0; i < targetValues.length; i++ ){
 //        	System.out.println("\nTargetvalue: " + targetValues[i] + "\t result: " + europeanMatrix[i].getValue(bates));
 //        }
+		
 		double [] values = new double[maturities.length*strikes.length];
 		double mse = 0;
 		for(int i = 0; i < maturities.length; i++){
 			for(int j = 0; j < strikes.length; j++){
-				int index2 = maturities[i]+tenor;
 				values[i*strikes.length + j] = europeanMatrix[i][j].getValue(
  													new TwoFactorBatesModelCF(
  													bestParameters[0],
@@ -213,8 +207,8 @@ public class LevenbergTest {
  													bestParameters[12],
  													volatilityOne,
  													volatilityTwo,
- 													forwardcurve[index2][2]+1.5,
- 													-Math.log(sheetdata.getSwapAnnuity(maturities[i], tenor))/maturities[i])
+ 													sheetdata.getForwardSwapRate(maturities[i], tenor)+1.5,
+ 													-Math.log(sheetdata.getSwapAnnuity(maturities[i], tenor)/tenor)/maturities[i])
  												)
  				;
 				mse +=(values[i*strikes.length + j]-targetValues[i*strikes.length + j])*(values[i*strikes.length + j]-targetValues[i*strikes.length + j]);
