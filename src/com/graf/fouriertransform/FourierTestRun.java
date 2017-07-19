@@ -20,7 +20,7 @@ public class FourierTestRun {
  
         double delta        = Math.sqrt(0.3);
         double k           = -0.5;
-        double volatility   = 0.2;
+        double volatility   = 0.2; 
         double initialPrice = 100;
         double riskFreeRate = 0.05;
         
