@@ -28,11 +28,11 @@ public class FourierTestRun {
         double strike		= 100;
         
 
-        ProcessCharacteristicFunctionInterface bs = new BlackScholesModel(initialPrice, 0, Math.sqrt(volatility));
+//        ProcessCharacteristicFunctionInterface bs = new BlackScholesModel(initialPrice, 0, Math.sqrt(volatility));
         ProcessCharacteristicFunctionInterface bates = new TwoFactorBatesModelCF(alpha, beta, sigma, rho, lambda, k, delta, volatility, initialPrice, riskFreeRate);
         AbstractProductFourierTransform european = new EuropeanOption(maturity, strike, Math.exp(-riskFreeRate*maturity));
 
-        System.out.println(Math.exp(-riskFreeRate*maturity)*european.getValue(bates));
+        System.out.println(european.getValue(bates));
 
 
     }
