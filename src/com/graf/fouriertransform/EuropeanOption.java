@@ -34,7 +34,7 @@ public class EuropeanOption extends AbstractProductFourierTransform {
 
 	private final double maturity;
 	private final double strike;
-	private final double payoffUnit;
+	private final double discountFactor;
 	private final String nameOfUnderliyng;
 	
 	/**
@@ -42,11 +42,11 @@ public class EuropeanOption extends AbstractProductFourierTransform {
 	 * @param maturity The maturity T in the option payoff max(S(T)-K,0)
 	 * @param strike The strike K in the option payoff max(S(T)-K,0).
 	 */
-	public EuropeanOption(double maturity, double strike, double payoffUnit) {
+	public EuropeanOption(double maturity, double strike, double discountFactor) {
 		super();
 		this.maturity			= maturity;
 		this.strike				= strike;
-		this.payoffUnit			= payoffUnit;
+		this.discountFactor		= discountFactor;
 		this.nameOfUnderliyng	= null;		// Use asset with index 0
 	}
 
@@ -82,7 +82,7 @@ public class EuropeanOption extends AbstractProductFourierTransform {
 
 		RealIntegralInterface integrator = new SimpsonRealIntegrator(-100.0, 100.0, 20000, true);
 
-		return payoffUnit * integrator.integrate(integrand) / 2.0 / Math.PI;
+		return discountFactor * integrator.integrate(integrand) / 2.0 / Math.PI;
 	}
 	
 	
