@@ -7,10 +7,12 @@ import net.finmath.fouriermethod.products.AbstractProductFourierTransform;
 import net.finmath.optimizer.LevenbergMarquardt;
 import net.finmath.optimizer.SolverException;
 
-public class LevenbergTest {
+public class LevenbergTwoBates {
 
 	public static void main(String[] args) throws IOException {
         
+		SABRdata sheetdata = new SABRdata();
+		
 		//initial parameters  
         double alphaOne     = 0.01;
         double alphaTwo		= 0.04;
@@ -32,35 +34,38 @@ public class LevenbergTest {
         double volatilityOne   = 0.00963;
         double volatilityTwo   = 0.01352;      
         
-        
-      
-        
-        
-        double[] initialParameters = new double[]{			
-        	Math.log(alphaOne),
-        	Math.log(alphaTwo),
-			Math.log(betaOne),
-			Math.log(betaTwo),
-			Math.log(sigmaOne),
-			Math.log(sigmaTwo),
-			rhoOne,
-			rhoTwo,
-			Math.log(lambdaZero),
-			Math.log(lambdaOne),
-			Math.log(lambdaTwo),
-			k,
-			delta,
-			volatilityOne,
-			volatilityTwo
-        };
-        
-        
-		SABRdata sheetdata = new SABRdata();
+		
 		
 		int tenor = 10;
 		double shift;
 		if(tenor == 2){shift = 2.65;}else if(tenor == 5){shift = 1.6;}else if(tenor == 10){shift = 1.5;}else{shift = 0;};
 		double[][] volatilities = sheetdata.getSmileData(tenor);
+		
+//		double[] volatilityOne = new double[volatilities[3].length];
+//		double[] volatilityTwo = new double[volatilities[3].length];
+//		for(int i=0; i<volatilities[3].length;i++){
+//			volatilityOne[i]   = volatilities[3][i]*volatilities[3][i];
+//			volatilityTwo[i]   = volatilities[3][i]*volatilities[3][i];
+//		}
+		
+        double[] initialParameters = new double[]{			
+            	Math.log(alphaOne),
+            	Math.log(alphaTwo),
+    			Math.log(betaOne),
+    			Math.log(betaTwo),
+    			Math.log(sigmaOne),
+    			Math.log(sigmaTwo),
+    			rhoOne,
+    			rhoTwo,
+    			Math.log(lambdaZero),
+    			Math.log(lambdaOne),
+    			Math.log(lambdaTwo),
+    			k,
+    			delta
+//    			volatilityOne,
+//    			volatilityTwo
+            };
+		
 		int[] maturities = {1, 2, 5, 10, 15, 20};
 //		int[] maturities = {5};
 		double[] strikes = {-1,-0.5, -0.25, 0, 0.25, 0.5, 1, 1.5, 2};
@@ -93,33 +98,31 @@ public class LevenbergTest {
 						try {
 							values[i*strikes.length + j] = europeanMatrix[i][j].getValue(
 																new TwoFactorBatesModelCF(
-					 											Math.exp(parameters[0]),
-					 											Math.exp(parameters[1]),
-					 											Math.exp(parameters[2]),
-					 											Math.exp(parameters[3]),																	
-					 											Math.exp(parameters[4]),
-			 													Math.exp(parameters[5]),
-			 													parameters[6],
-			 													parameters[7],
+																Math.exp(parameters[0]),
+																Math.exp(parameters[1]),
+																Math.exp(parameters[2]),
+																Math.exp(parameters[3]),																	
+																Math.exp(parameters[4]),
+																Math.exp(parameters[5]),
+																parameters[6],
+																parameters[7],
 																Math.exp(parameters[8]),
-			 													Math.exp(parameters[9]),
-			 													Math.exp(parameters[10]),
+																Math.exp(parameters[9]),
+																Math.exp(parameters[10]),
 																parameters[11],
 																parameters[12],
-																parameters[13],
-																parameters[14],
-//																volatilityOne,
-//																volatilityTwo,
+//																parameters[13],
+//																parameters[14],
+																volatilityOne,//[i],
+																volatilityTwo,//[i],
 																sheetdata.getForwardSwapRate(maturities[i], tenor)+shift,
-																-Math.log(sheetdata.getSwapAnnuity(maturities[i], tenor)/tenor)/maturities[i])
+																0)
 															)
 							;
-							
 						} catch (IOException e) {
 							// TODO Auto-generated catch block
 							e.printStackTrace();
 						}
-//						System.out.println((values[i*strikes.length + j]-targetValues[i*strikes.length + j])*(values[i*strikes.length + j]-targetValues[i*strikes.length + j]));
 					}
 		 		}
 			}
@@ -127,7 +130,7 @@ public class LevenbergTest {
 //		optimizer.setLambda(0.001);
 	  	optimizer.setInitialParameters(initialParameters);
 	  	optimizer.setWeights(weights);
-	  	optimizer.setMaxIteration(5);
+	  	optimizer.setMaxIteration(50);
 	  	
 	  	optimizer.setTargetValues(targetValues);
 	  
@@ -155,9 +158,10 @@ public class LevenbergTest {
 							"\n\tlambdaOne = \t\t" + Math.exp(bestParameters[9])  +
 							"\n\tlambdaTwo = \t\t" + Math.exp(bestParameters[10]) + 
 							"\n\tk = \t\t\t" + bestParameters[11] + 
-							"\n\tdelta = \t\t" + bestParameters[12] +
-							"\n\tvolatilityOne = \t" + bestParameters[13] + 
-							"\n\tvolatilityTwo = \t" + bestParameters[14]);
+							"\n\tdelta = \t\t" + bestParameters[12] 
+//							"\n\tvolatilityOne = \t" + bestParameters[13] + 
+//							"\n\tvolatilityTwo = \t" + bestParameters[14]
+									);
 		
 		double [] values = new double[maturities.length*strikes.length];
 		double mse = 0;
@@ -178,12 +182,12 @@ public class LevenbergTest {
  													Math.exp(bestParameters[10]),
  													bestParameters[11],
  													bestParameters[12],
- 													bestParameters[13],
- 													bestParameters[14],
-// 													volatilityOne,
-// 													volatilityTwo,
+// 													bestParameters[13],
+// 													bestParameters[14],
+ 													volatilityOne,//[i],
+ 													volatilityTwo,//[i],
  													sheetdata.getForwardSwapRate(maturities[i], tenor)+shift,
- 													-Math.log(sheetdata.getSwapAnnuity(maturities[i], tenor)/tenor)/maturities[i])
+ 													0)
  												)
  				;
 				mse +=(values[i*strikes.length + j]-targetValues[i*strikes.length + j])*(values[i*strikes.length + j]-targetValues[i*strikes.length + j]);
@@ -192,7 +196,63 @@ public class LevenbergTest {
 			System.out.println();
  		}
 		System.out.println("RMSE =" + Math.sqrt((mse/(maturities.length*strikes.length))));
+		
+		System.out.println("\n Same parameters but different tenor: targets\n");
+		int tenor2 = 5;
+		double shift2 = 0;
+		if(tenor2 == 2){shift2 = 2.65;}else if(tenor2 == 5){shift2 = 1.6;}else if(tenor2 == 10){shift2 = 1.5;}else{shift2 = 0;};
+		volatilities = sheetdata.getSmileData(tenor2);
+//		for(int i=0; i<volatilities[3].length;i++){
+//			volatilityOne[i]   = volatilities[3][i]*volatilities[3][i];
+//			volatilityTwo[i]   = volatilities[3][i]*volatilities[3][i];
+//		}
+		for(int i = 0; i < maturities.length; i++){
+			for(int j = 0; j < strikes.length; j++){
+				targetValues[i*strikes.length + j] = net.finmath.functions.AnalyticFormulas.blackScholesGeneralizedOptionValue(sheetdata.getForwardSwapRate(maturities[i], tenor2)+shift2,volatilities[i][j],maturities[i], strikes[j]+shift2,sheetdata.getSwapAnnuity(maturities[i], tenor2));
+//				bachelierValues[i*strikes.length + j] = net.finmath.functions.AnalyticFormulas.bachelierOptionValue(forwardcurve[index][2]+1.5,volatilities[i][j],maturities[i], strikes[j]+1.5,sheetdata.getSwapAnnuity(maturities[i], tenor));
+				europeanMatrix[i][j] = new EuropeanOption(maturities[i], strikes[j]+shift2, sheetdata.getSwapAnnuity(maturities[i], tenor2));
+				System.out.print(targetValues[i*strikes.length + j] + "\t");
+			}
+			System.out.println();
+		}
+		System.out.println("\n result:\n");
+		for(int i = 0; i < maturities.length; i++){
+			for(int j = 0; j < strikes.length; j++){
+				values[i*strikes.length + j] = europeanMatrix[i][j].getValue(
+ 													new TwoFactorBatesModelCF(
+ 													Math.exp(bestParameters[0]),
+ 													Math.exp(bestParameters[1]),
+ 													Math.exp(bestParameters[2]),
+ 													Math.exp(bestParameters[3]),
+ 													Math.exp(bestParameters[4]),
+ 													Math.exp(bestParameters[5]),
+ 													bestParameters[6],
+ 													bestParameters[7],
+ 													Math.exp(bestParameters[8]),
+ 													Math.exp(bestParameters[9]),
+ 													Math.exp(bestParameters[10]),
+ 													bestParameters[11],
+ 													bestParameters[12],
+// 													bestParameters[13],
+// 													bestParameters[14],
+ 													volatilityOne,//[i],
+ 													volatilityTwo,//[i],
+ 													sheetdata.getForwardSwapRate(maturities[i], tenor2)+shift2,
+ 													0)
+ 												)
+ 				;
+				mse +=(values[i*strikes.length + j]-targetValues[i*strikes.length + j])*(values[i*strikes.length + j]-targetValues[i*strikes.length + j]);
+				System.out.print(values[i*strikes.length + j] + "\t");
+			}
+			System.out.println();
+ 		}
+		System.out.println("RMSE =" + Math.sqrt((mse/(maturities.length*strikes.length))));
+	
 	}
+	
+	
+	
+	
 }
 
 
