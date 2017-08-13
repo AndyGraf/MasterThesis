@@ -10,7 +10,7 @@ public class TwoFactorBatesModelCF implements ProcessCharacteristicFunctionInter
 
 	
 	private final double[] alpha;
-	private final double[] betaStar;
+	private final double[] beta;
 	private final double[] sigma;
 	private final double[] rho;	
 	
@@ -22,9 +22,6 @@ public class TwoFactorBatesModelCF implements ProcessCharacteristicFunctionInter
 	private final double riskFreeRate;
 	
 	private final int numberOfFactors;
-
-	//j is set to 2 to extract the characteristic function
-	private final double j=2;
 	
 	//Two Factor Bates Model
 	public TwoFactorBatesModelCF(
@@ -40,7 +37,7 @@ public class TwoFactorBatesModelCF implements ProcessCharacteristicFunctionInter
 			double riskFreeRate) {
 		super();
 		this.alpha			= alpha;
-		this.betaStar		= beta;
+		this.beta			= beta;
 		this.sigma			= sigma;
 		this.rho			= rho;
 		this.lambda			= lambda;
@@ -74,7 +71,7 @@ public class TwoFactorBatesModelCF implements ProcessCharacteristicFunctionInter
 			double riskFreeRate) {
 		super();
 		this.alpha			= new double[]{alphaOne, alphaTwo};
-		this.betaStar		= new double[]{betaOne, betaTwo};
+		this.beta			= new double[]{betaOne, betaTwo};
 		this.sigma			= new double[]{sigmaOne, sigmaTwo};
 		this.rho			= new double[]{rhoOne, rhoTwo};
 		this.lambda			= new double[]{lambdaZero, lambdaOne, lambdaTwo};
@@ -90,10 +87,11 @@ public class TwoFactorBatesModelCF implements ProcessCharacteristicFunctionInter
 	//One Factor Bates Model
 	public TwoFactorBatesModelCF(
 			double alpha,
-			double betaStar,
+			double beta,
 			double sigma,
 			double rho,
 			double lambda,
+			double lambdaOne,
 			double k,
 			double delta,
 			double volatility,
@@ -101,10 +99,10 @@ public class TwoFactorBatesModelCF implements ProcessCharacteristicFunctionInter
 			double riskFreeRate) {
 		super();
 		this.alpha			= new double[]{alpha};
-		this.betaStar		= new double[]{betaStar};
+		this.beta			= new double[]{beta};
 		this.sigma			= new double[]{sigma};
 		this.rho			= new double[]{rho};
-		this.lambda			= new double[]{lambda, 0};
+		this.lambda			= new double[]{lambda, lambdaOne};
 		this.k				= k;
 		this.delta			= delta;
 		this.volatility		= new double[]{volatility};
@@ -122,9 +120,8 @@ public class TwoFactorBatesModelCF implements ProcessCharacteristicFunctionInter
         return new CharacteristicFunctionInterface() {
             @Override
             public Complex apply(Complex argument) {
+            	
                 Complex iargument = argument.multiply(Complex.I);
-                
-                double[] beta = new double[numberOfFactors];
                 
                 Complex[] gamma = new Complex[numberOfFactors];
                 
@@ -134,17 +131,16 @@ public class TwoFactorBatesModelCF implements ProcessCharacteristicFunctionInter
                 
                 Complex C = iargument
                 				.multiply(iargument)
-                				.add(iargument.multiply(3-2*j))
+                				.add(iargument.multiply(-1))
                 				.multiply(0.5*delta*delta)			
                 				.exp()
                 				.multiply(new Complex(1+k).pow(iargument))
                 				.add(-1)							
-                				.multiply(Math.pow(1+k, 2-j))
                 				.add(iargument.multiply(-k));
-                
+               
                 for(int i = 0; i < numberOfFactors; i++){
                 	
-                	beta[i] = betaStar[i] + rho[i]*sigma[i]*(j-2);
+
                 	
                 	gamma[i] = iargument
                 				.multiply(rho[i]*sigma[i])
@@ -152,7 +148,7 @@ public class TwoFactorBatesModelCF implements ProcessCharacteristicFunctionInter
                 				.pow(2)
                 				.subtract(
                 					iargument.multiply(iargument)
-                					.add(iargument.multiply(3-2*j))
+                					.add(iargument.multiply(-1))
                 					.multiply(0.5)
                 					.add(C.multiply(lambda[i+1]))
                 					.multiply(2*sigma[i]*sigma[i])
@@ -160,7 +156,9 @@ public class TwoFactorBatesModelCF implements ProcessCharacteristicFunctionInter
                 				.sqrt()
                 				;
                 	
-                	A[i] = iargument
+                	
+                	A[i] =
+                			iargument
                 			.multiply(rho[i] * sigma[i])
                 			.subtract(beta[i])
                 			.subtract(gamma[i])
@@ -169,23 +167,21 @@ public class TwoFactorBatesModelCF implements ProcessCharacteristicFunctionInter
                 					.multiply(rho[i]*sigma[i])
                 					.subtract(beta[i])
                 					.subtract(gamma[i])
-                					.multiply(gamma[i]
-                							.multiply(time)
-                							.exp()
+                					.multiply(new Complex(1).divide(gamma[i].multiply(time).exp())
                 							.subtract(1)
-                							.multiply(-1)
                 							.divide(gamma[i])
                 							)
                 					.multiply(0.5)
-                					.add(1)
+                					.add(new Complex(1).divide(gamma[i].multiply(time).exp()))
                 					.log()
+                					.add(gamma[i].multiply(time))
                 					.multiply((2*alpha[i])/(sigma[i]*sigma[i]))
                 					)
                 			;
                 	
                 	B[i] = iargument
                 			.multiply(iargument)
-                			.add(iargument.multiply(3-2*j))
+                			.add(iargument.multiply(-1))
                 			.multiply(0.5)
                 			.add(C.multiply(lambda[i+1]))
                 			.multiply(-2)
@@ -193,22 +189,18 @@ public class TwoFactorBatesModelCF implements ProcessCharacteristicFunctionInter
                 					.multiply(rho[i] * sigma[i])
                 					.subtract(beta[i])
                 					.add(gamma[i]
-                							.multiply(gamma[i]
-                									.multiply(time)
-                									.exp()
+                							.multiply(new Complex(1).divide(gamma[i].multiply(time).exp())
                 									.add(1)
-                									.divide(gamma[i]
-                											.multiply(time)
-                											.exp()
+                									.divide(new Complex(1).divide(gamma[i].multiply(time).exp())
                 											.subtract(1)
-                											.multiply(-1)
                 											)
                 									)
                 							)
                 					)
                 			;
-                		
+                	
                 }
+                
 
                 if(numberOfFactors == 2){
                 	return	A[0]

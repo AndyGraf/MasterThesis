@@ -39,9 +39,9 @@ public class LevenbergTwoBates {
         
 		
 		
-		int tenor = 2;
+		int tenor = 10;
 		double shift;
-		if(tenor == 2){shift = 0.0265;}else if(tenor == 5){shift = 0.016;}else if(tenor == 0.010){shift = 1.5;}else{shift = 0;};
+		if(tenor == 2){shift = 0.0265;}else if(tenor == 5){shift = 0.016;}else if(tenor == 10){shift = 0.015;}else{shift = 0;};
 //		if(tenor == 2){shift = 2.65;}else if(tenor == 5){shift = 1.6;}else if(tenor == 10){shift = 1.5;}else{shift = 0;};
 		double[][] volatilities = sheetdata.getSmileData(tenor);
 		
@@ -83,12 +83,12 @@ public class LevenbergTwoBates {
 		for(int w = 0; w < weights.length; w++){weights[w] = 1;};
 		System.out.println("Maturty");
 		for(int i = 0; i < maturities.length; i++){
-			System.out.print(maturities[i] + "\t");
+			System.out.print(maturities[i] + "  \t");
 			for(int j = 0; j < strikes.length; j++){
 				targetValues[i*strikes.length + j] = net.finmath.functions.AnalyticFormulas.blackScholesGeneralizedOptionValue(sheetdata.getForwardSwapRate(maturities[i], tenor)+shift,volatilities[i][j],maturities[i], strikes[j]+shift,sheetdata.getSwapAnnuity(maturities[i], tenor));
 //				bachelierValues[i*strikes.length + j] = net.finmath.functions.AnalyticFormulas.bachelierOptionValue(forwardcurve[index][2]+1.5,volatilities[i][j],maturities[i], strikes[j]+1.5,sheetdata.getSwapAnnuity(maturities[i], tenor));
 				europeanMatrix[i][j] = new EuropeanOption(maturities[i], strikes[j]+shift, sheetdata.getSwapAnnuity(maturities[i], tenor));
-				System.out.print(df.format(targetValues[i*strikes.length + j]*100) + "  \t");
+				System.out.print(df.format(targetValues[i*strikes.length + j]*100) + "     \t");
 			}
 			System.out.println();
 		}
@@ -172,11 +172,11 @@ public class LevenbergTwoBates {
 		System.out.println("\n Factor 1:" + df.format(Math.exp(bestParameters[0])) + "&\t" +
 											df.format(Math.exp(bestParameters[2])) + "&\t" +
 											df.format(Math.exp(bestParameters[4])) + "&\t" +
-											df.format(bestParameters[6]) + "&\t" +
+											df.format(bestParameters[6]) + "&&\t" +
 											df.format(Math.exp(bestParameters[8])) + "&\t" +
 											df.format(Math.exp(bestParameters[9])) + "&\t" +
 											df.format(bestParameters[11]) + "&\t" +
-											df.format(bestParameters[12]) + "&\t"
+											df.format(bestParameters[12]) + "&&\t"
 							);
 		System.out.println("\n Factor 2:" + df.format(Math.exp(bestParameters[1])) + "&\t" +
 											df.format(Math.exp(bestParameters[3])) + "&\t" +
