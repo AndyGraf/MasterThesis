@@ -1,40 +1,106 @@
 package com.graf.fouriertransform;
 
+import net.finmath.exception.CalculationException;
 import net.finmath.fouriermethod.models.BlackScholesModel;
 import net.finmath.fouriermethod.models.ProcessCharacteristicFunctionInterface;
 import net.finmath.fouriermethod.products.AbstractProductFourierTransform;
+import net.finmath.functions.AnalyticFormulas;
+import net.finmath.montecarlo.BrownianMotion;
+import net.finmath.montecarlo.BrownianMotionInterface;
+import net.finmath.montecarlo.assetderivativevaluation.AssetModelMonteCarloSimulationInterface;
+import net.finmath.montecarlo.assetderivativevaluation.HestonModel;
+import net.finmath.montecarlo.assetderivativevaluation.HestonModelTest;
+import net.finmath.montecarlo.assetderivativevaluation.MonteCarloAssetModel;
+import net.finmath.montecarlo.assetderivativevaluation.HestonModel.Scheme;
+import net.finmath.montecarlo.assetderivativevaluation.products.EuropeanOption;
+import net.finmath.montecarlo.model.AbstractModel;
+import net.finmath.montecarlo.process.AbstractProcess;
+import net.finmath.montecarlo.process.ProcessEulerScheme;
+import net.finmath.time.TimeDiscretization;
+import net.finmath.time.TimeDiscretizationInterface;
 
 
 public class FourierTestRun {
+	
+
 
     public static void main(String[] args) {
     	
     	
-        double theta        = 14.229/248.49;
-        double kappa        = 2.49;
+    	double	initialValue   = 1.0;
+    	double	riskFreeRate   = 0.05;
+    	double	volatility     = 0.30;
+
+    	double theta = volatility*volatility;
+    	double kappa = 1.0;
+    	double xi = 0.3;
+    	double rho = 0.0;
+
+    	Scheme scheme = Scheme.FULL_TRUNCATION;
+
+    	// Process discretization properties
+    	int		numberOfPaths		= 1000;
+    	int		numberOfTimeSteps	= 100;
+    	double	deltaT				= 0.02;
+
+    	int		seed				= 34515;
+
+    	// Product properties
+    	double	optionMaturity = 2.0;
+    	double	optionStrike = 1.10;
+    	
+    	// parameter values for the fourier implementation
+    	
         double alpha        = theta*kappa;
         double beta         = kappa;
-        double sigma        = 46.63;
-        double rho          = -0.454;
+        double sigma        = xi;
+        
         double lambda       = 0;
- 
         double delta        = 0;
         double k            = 0;
-        double volatility   = 0.00963; 
-        double initialPrice = 100;
-        double riskFreeRate = 0.05;
         
-        double maturity 	= 20;
-        double strike		= 100;
+		TimeDiscretizationInterface timeDiscretization = new TimeDiscretization(0.0 /* initial */, numberOfTimeSteps, deltaT);
+
+		BrownianMotionInterface brownianMotion = new BrownianMotion(timeDiscretization, 2 /* numberOfFactors */, numberOfPaths, seed);
+
+        
         
 
 //        ProcessCharacteristicFunctionInterface bs = new BlackScholesModel(initialPrice, 0, Math.sqrt(volatility));
-        ProcessCharacteristicFunctionInterface bates = new TwoFactorBatesModelCF(alpha, beta, sigma, rho, lambda, 0, k, delta, volatility, initialPrice, riskFreeRate);
-        ProcessCharacteristicFunctionInterface bates2 = new TwoFactorBatesModelCF(alpha, beta, sigma, rho, lambda, 0, k, delta, volatility, initialPrice, riskFreeRate);
-        AbstractProductFourierTransform european = new EuropeanOption(maturity, strike, Math.exp(-riskFreeRate*maturity));
+        ProcessCharacteristicFunctionInterface bates = new TwoFactorBatesModelCF(alpha, beta, sigma, rho, lambda, 0, k, delta, volatility*volatility, initialValue, riskFreeRate);
+        AbstractProductFourierTransform european = new com.graf.fouriertransform.EuropeanOption(optionMaturity, optionStrike, Math.exp(-riskFreeRate*optionMaturity));
 
-        System.out.println(european.getValue(bates));
-        System.out.println(european.getValue(bates2));
+        double fourierValue = european.getValue(bates);
+        System.out.println("Analytic value using the Fourier method: \n" + fourierValue);
+
+        
+        
+		AssetModelMonteCarloSimulationInterface monteCarloHestonModel;
+		{
+			// Create a model
+			AbstractModel model = new HestonModel(initialValue, riskFreeRate, volatility, theta, kappa, xi, rho, scheme);
+
+			// Create a corresponding MC process
+			AbstractProcess process = new ProcessEulerScheme(brownianMotion);
+
+			// Using the process (Euler scheme), create an MC simulation of a Black-Scholes model
+			monteCarloHestonModel = new MonteCarloAssetModel(model, process);
+		}
+       
+
+
+			EuropeanOption europeanOption = new EuropeanOption(optionMaturity, optionStrike);
+			double value = 0;
+			try {
+				value = europeanOption.getValue(monteCarloHestonModel);
+			} catch (CalculationException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			System.out.println("\nValue using the monte carlo method: \n" + value);
+		
+			System.out.println("\nError: \n" + Math.abs(fourierValue - value));
+		
 
     }
 
