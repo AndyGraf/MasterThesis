@@ -27,7 +27,7 @@ public class FourierTestRun {
     public static void main(String[] args) {
     	
     	
-    	double	initialValue   = 1.0;
+    	double	initialValue   = 1;
     	double	riskFreeRate   = 0.05;
     	double	volatility     = 0.30;
 
@@ -43,7 +43,7 @@ public class FourierTestRun {
     	int		numberOfTimeSteps	= 100;
     	double	deltaT				= 0.02;
 
-    	int		seed				= 34515;
+    	int		seed				= 3515;
 
     	// Product properties
     	double	optionMaturity = 2.0;
@@ -67,10 +67,16 @@ public class FourierTestRun {
         
 
 //        ProcessCharacteristicFunctionInterface bs = new BlackScholesModel(initialPrice, 0, Math.sqrt(volatility));
-        ProcessCharacteristicFunctionInterface bates = new TwoFactorBatesModelCF(alpha, beta, sigma, rho, lambda, 0, k, delta, volatility*volatility, initialValue, riskFreeRate);
-        AbstractProductFourierTransform european = new com.graf.fouriertransform.EuropeanOption(optionMaturity, optionStrike, Math.exp(-riskFreeRate*optionMaturity));
+        ProcessCharacteristicFunctionInterface bates = new TwoFactorBatesModelCF(alpha, beta, sigma, rho, lambda, 0, k, delta, volatility*volatility, initialValue, riskFreeRate, Math.exp(-riskFreeRate*optionMaturity));
+        net.finmath.fouriermethod.products.EuropeanOption european = new net.finmath.fouriermethod.products.EuropeanOption(optionMaturity, optionStrike);
 
-        double fourierValue = european.getValue(bates);
+        double fourierValue = 0;
+		try {
+			fourierValue = european.getValue(bates);
+		} catch (CalculationException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
         System.out.println("Analytic value using the Fourier method: \n" + fourierValue);
 
         

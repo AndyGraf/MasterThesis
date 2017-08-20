@@ -20,6 +20,7 @@ public class TwoFactorBatesModelCF implements ProcessCharacteristicFunctionInter
 	private final double[] volatility;
 	private final double initialPrice;
 	private final double riskFreeRate;
+	private final double discountFactor;
 	
 	private final int numberOfFactors;
 	
@@ -34,7 +35,8 @@ public class TwoFactorBatesModelCF implements ProcessCharacteristicFunctionInter
 			double delta,
 			double[] volatility,
 			double initialPrice,
-			double riskFreeRate) {
+			double riskFreeRate,
+			double discountFactor) {
 		super();
 		this.alpha			= alpha;
 		this.beta			= beta;
@@ -46,6 +48,7 @@ public class TwoFactorBatesModelCF implements ProcessCharacteristicFunctionInter
 		this.volatility		= volatility;
 		this.initialPrice	= initialPrice;
 		this.riskFreeRate	= riskFreeRate;
+		this.discountFactor	= discountFactor;
 		
 		this.numberOfFactors = 2;
 	}
@@ -68,7 +71,8 @@ public class TwoFactorBatesModelCF implements ProcessCharacteristicFunctionInter
 			double volatilityOne,
 			double volatilityTwo,
 			double initialPrice,
-			double riskFreeRate) {
+			double riskFreeRate,
+			double discountFactor) {
 		super();
 		this.alpha			= new double[]{alphaOne, alphaTwo};
 		this.beta			= new double[]{betaOne, betaTwo};
@@ -80,6 +84,7 @@ public class TwoFactorBatesModelCF implements ProcessCharacteristicFunctionInter
 		this.volatility		= new double[]{volatilityOne, volatilityTwo};
 		this.initialPrice	= initialPrice;
 		this.riskFreeRate	= riskFreeRate;
+		this.discountFactor	= discountFactor;
 		
 		this.numberOfFactors = 2;
 	}
@@ -96,7 +101,8 @@ public class TwoFactorBatesModelCF implements ProcessCharacteristicFunctionInter
 			double delta,
 			double volatility,
 			double initialPrice,
-			double riskFreeRate) {
+			double riskFreeRate,
+			double discountFactor) {
 		super();
 		this.alpha			= new double[]{alpha};
 		this.beta			= new double[]{beta};
@@ -108,6 +114,7 @@ public class TwoFactorBatesModelCF implements ProcessCharacteristicFunctionInter
 		this.volatility		= new double[]{volatility};
 		this.initialPrice	= initialPrice;
 		this.riskFreeRate	= riskFreeRate;
+		this.discountFactor	= discountFactor;
 		
 		this.numberOfFactors = 1;
 	}
@@ -209,14 +216,16 @@ public class TwoFactorBatesModelCF implements ProcessCharacteristicFunctionInter
                 				.add(B[1].multiply(volatility[1]))
                 				.add(C.multiply(time*lambda[0]))
                 				.add(iargument.multiply(Math.log(initialPrice)+time*riskFreeRate))
-                				.exp();
+                				.exp()
+                				.multiply(discountFactor);
                 }
                 else{
                     return	A[0]
                     			.add(B[0].multiply(volatility[0]))
                     			.add(C.multiply(time*lambda[0]))
                     			.add(iargument.multiply(Math.log(initialPrice)+time*riskFreeRate))
-                    			.exp();
+                    			.exp()
+                    			.multiply(discountFactor);
                 }
             };
         };
