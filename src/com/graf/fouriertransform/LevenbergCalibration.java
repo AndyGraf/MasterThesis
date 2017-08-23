@@ -245,7 +245,7 @@ public class LevenbergCalibration {
         double alphaOne     = 0.028;
         double alphaTwo		= 0.130;
         double betaOne      = 0.0;
-        double betaTwo      = 0.58;
+        double betaTwo      = 5.58;
         double sigmaOne     = 1.039;
         double sigmaTwo     = 0.667;
         double rhoOne       = -0.775;
