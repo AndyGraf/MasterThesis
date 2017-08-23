@@ -25,7 +25,6 @@ public class LevenbergCalibration {
 	
 	
 	static double [] targetValues = new double[maturities.length*strikes.length];
-	static double [] targetVolatilities = new double[maturities.length*strikes.length];
 	static double [] weights = new double[maturities.length*strikes.length];
 	static double [] values = new double[maturities.length*strikes.length];
 
@@ -71,8 +70,7 @@ public class LevenbergCalibration {
 		for(int i = 0; i < maturities.length; i++){
 			System.out.print(maturities[i] + "  \t");
 			for(int j = 0; j < strikes.length; j++){
-				targetVolatilities[i*strikes.length + j] = volatilities[i][j];
-				targetValues[i*strikes.length + j] = net.finmath.functions.AnalyticFormulas.blackScholesGeneralizedOptionValue(sheetdata.getForwardSwapRate(maturities[i], tenor)+shift,targetVolatilities[i*strikes.length + j],maturities[i], strikes[j]+shift,sheetdata.getSwapAnnuity(maturities[i], tenor));
+				targetValues[i*strikes.length + j] = net.finmath.functions.AnalyticFormulas.blackScholesGeneralizedOptionValue(sheetdata.getForwardSwapRate(maturities[i], tenor)+shift,volatilities[i][j],maturities[i], strikes[j]+shift,sheetdata.getSwapAnnuity(maturities[i], tenor));
 				europeanMatrix[i][j] = new EuropeanOption(maturities[i], strikes[j]+shift);
 				System.out.print(df.format(targetValues[i*strikes.length + j]*100) + "     \t");
 			}
@@ -106,14 +104,12 @@ public class LevenbergCalibration {
 				System.out.println("\nSwaption prices calculated with a maturity-wise calibration and the error in brackets:\n");
 				System.out.println("Maturty" + "\t\t\t\t\t\t\t\t Strikes\n" + "\t-1%      \t-0.5%    \t-0.25%    \t0%      \t0.25%      \t0.5%      \t1%      \t1.5%      \t2%\n");
 				double[] mTargetValues = new double[strikes.length];
-				double[] mTargetVolatilities = new double[strikes.length];
 				for(int i = 0; i<maturities.length; i++){
 					int[] maturity = {maturities[i]};
 					for(int j = 0; j < strikes.length; j++){
 						mTargetValues[j] = targetValues[i*strikes.length + j];
-						mTargetVolatilities[j] = volatilities[i][j];
 					}
-					double[] mSabrParameters = sabr(sheetdata, maturity, mTargetVolatilities);
+					double[] mSabrParameters = sabr(sheetdata, maturity, mTargetValues);
 					error += printSABR(mSabrParameters, sheetdata, maturity, mTargetValues);
 				}
 				System.out.println("Root mean squared error: " + df.format(Math.sqrt((error/(maturities.length*strikes.length)))));
@@ -471,10 +467,10 @@ public class LevenbergCalibration {
 	
 	public static double[] sabr(SABRdata sheetdata) throws IOException{
 		
-		return sabr(sheetdata, maturities, targetVolatilities);
+		return sabr(sheetdata, maturities, targetValues);
 	}
 	
-	public static double[] sabr(SABRdata sheetdata, int [] maturities, double[] targetVolatilities) throws IOException{
+	public static double[] sabr(SABRdata sheetdata, int [] maturities, double[] targetValues) throws IOException{
 		
 		//initial parameters 
 		
@@ -497,7 +493,7 @@ public class LevenbergCalibration {
 		 		for(int i = 0; i < maturities.length; i++){
 					for(int j = 0; j < strikes.length; j++){
 							try {
-								values[i*strikes.length + j] = SABRVolatility.getVolatility(
+								 double volatility = SABRVolatility.getVolatility(
 																	parameters[0],
 																	sabrBeta,
 																	parameters[1],
@@ -505,6 +501,7 @@ public class LevenbergCalibration {
 																	sheetdata.getForwardSwapRate(maturities[i], tenor)+shift,
 																	strikes[j]+shift,
 																	maturities[i]);
+								 values[i*strikes.length + j] = net.finmath.functions.AnalyticFormulas.blackScholesGeneralizedOptionValue(sheetdata.getForwardSwapRate(maturities[i], tenor)+shift,volatility,maturities[i], strikes[j]+shift,sheetdata.getSwapAnnuity(maturities[i], tenor));
 							} catch (IOException e) {
 								e.printStackTrace();
 							}
@@ -516,7 +513,7 @@ public class LevenbergCalibration {
 	  	optimizer.setWeights(weights);
 	  	optimizer.setMaxIteration(maxIteration);
 	  	
-	  	optimizer.setTargetValues(targetVolatilities);
+	  	optimizer.setTargetValues(targetValues);
 	  
 	  	try {
 			optimizer.run();
