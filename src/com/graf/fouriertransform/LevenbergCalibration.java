@@ -13,7 +13,7 @@ import net.finmath.optimizer.SolverException;
 public class LevenbergCalibration {
 	
 	//maximum number of iterations for the LM-algorithm
-	static int maxIteration = 100;
+	static int maxIteration = 150;
 	
 	static DecimalFormat df = new DecimalFormat("#.###");
     
@@ -47,7 +47,7 @@ public class LevenbergCalibration {
 		
 		SABRdata sheetdata = new SABRdata();
 		
-		System.out.println( "Model to calibrate: \n" + 
+		System.out.println( "Model to calibrate (input number): \n" + 
 							"1) Two-factor Bates \n" + 
 							"2) Two-factor Heston \n" + 
 							"3) One-factor Bates \n" + 
@@ -66,7 +66,7 @@ public class LevenbergCalibration {
 
 
 		//calculate the target values
-		System.out.println("Target swaption prices in % of the notional principal amount with a tenor of " + tenor + ":\n");
+		System.out.println("Target swaption prices in % of the notional principal amount with a tenor of " + tenor + " years:\n");
 		System.out.println("Maturty" + "\t\t\t\t\t\t\t\t Strikes\n" + "\t-1%      \t-0.5%    \t-0.25%    \t0%      \t0.25%      \t0.5%      \t1%      \t1.5%      \t2%\n");
 		for(int i = 0; i < maturities.length; i++){
 			System.out.print(maturities[i] + "  \t");
@@ -157,6 +157,11 @@ public class LevenbergCalibration {
         double volatilityOne   = 0.00963;
         double volatilityTwo   = 0.01352;   
         
+       
+        
+        
+        
+        
         double[] initialParameters = new double[]{			
             	Math.log(alphaOne),
             	Math.log(alphaTwo),
@@ -169,7 +174,7 @@ public class LevenbergCalibration {
     			Math.log(lambdaZero),
     			Math.log(lambdaOne),
     			Math.log(lambdaTwo),
-    			Math.log(-k),
+    			k,
     			delta,
     			Math.log(volatilityOne),
     			Math.log(volatilityTwo)
@@ -197,8 +202,8 @@ public class LevenbergCalibration {
 																Math.exp(parameters[8]),
 																Math.exp(parameters[9]),
 																Math.exp(parameters[10]),
-																-Math.exp(parameters[11]),
-																parameters[12],
+																parameters[11],
+																Math.abs(parameters[12]),
 																Math.exp(parameters[13]),
 																Math.exp(parameters[14]),
 																sheetdata.getForwardSwapRate(maturities[i], tenor)+shift,
@@ -209,7 +214,6 @@ public class LevenbergCalibration {
 						} catch (IOException e) {
 							e.printStackTrace();
 						} catch (CalculationException e) {
-							// TODO Auto-generated catch block
 							e.printStackTrace();
 						}
 					}
@@ -228,7 +232,7 @@ public class LevenbergCalibration {
 			e.printStackTrace();
 		}
 	  
-
+	  	System.out.println("\n\n\tThe solver required " + optimizer.getIterations() + " iterations.");
 		
 		return optimizer.getBestFitParameters();
 		
@@ -241,7 +245,7 @@ public class LevenbergCalibration {
         double alphaOne     = 0.028;
         double alphaTwo		= 0.130;
         double betaOne      = 0.0;
-        double betaTwo      = 5.58;
+        double betaTwo      = 0.58;
         double sigmaOne     = 1.039;
         double sigmaTwo     = 0.667;
         double rhoOne       = -0.775;
@@ -294,7 +298,6 @@ public class LevenbergCalibration {
 						} catch (IOException e) {
 							e.printStackTrace();
 						} catch (CalculationException e) {
-							// TODO Auto-generated catch block
 							e.printStackTrace();
 						}
 					}
@@ -312,6 +315,8 @@ public class LevenbergCalibration {
 		} catch (SolverException e) {
 			e.printStackTrace();
 		}
+	  	
+	  	System.out.println("\n\n\tThe solver required " + optimizer.getIterations() + " iterations.");
 	  
 	  	return optimizer.getBestFitParameters();
         
@@ -360,7 +365,7 @@ public class LevenbergCalibration {
 																Math.exp(parameters[4]),
 																Math.exp(parameters[5]),
 																parameters[6],
-																parameters[7],
+																Math.abs(parameters[7]),
 																Math.exp(parameters[8]),
 																sheetdata.getForwardSwapRate(maturities[i], tenor)+shift,
 																0,
@@ -388,6 +393,8 @@ public class LevenbergCalibration {
 			e.printStackTrace();
 		}
 	  
+	  	System.out.println("\n\n\tThe solver required " + optimizer.getIterations() + " iterations.");
+	  	
 	  	return optimizer.getBestFitParameters();
         
 	}
@@ -455,6 +462,8 @@ public class LevenbergCalibration {
 		} catch (SolverException e) {
 			e.printStackTrace();
 		}
+	  	
+	  	System.out.println("\n\n\tThe solver required " + optimizer.getIterations() + " iterations.");
 	  
 	  	return optimizer.getBestFitParameters();
         
@@ -515,6 +524,9 @@ public class LevenbergCalibration {
 			e.printStackTrace();
 		}
 	  
+	  	
+	  	if(maturities.length >1)System.out.println("\n\n\tThe solver required " + optimizer.getIterations() + " iterations.");
+	  	
 	  	return optimizer.getBestFitParameters();
 	}
 	
@@ -533,8 +545,8 @@ public class LevenbergCalibration {
 				"\n\tlambdaZero = \t\t" + Math.exp(bestParameters[8]) + 
 				"\n\tlambdaOne = \t\t" + Math.exp(bestParameters[9])  +
 				"\n\tlambdaTwo = \t\t" + Math.exp(bestParameters[10]) + 
-				"\n\tk = \t\t\t" + -Math.exp(bestParameters[11]) + 
-				"\n\tdelta = \t\t" + bestParameters[12] +
+				"\n\tk = \t\t\t" + bestParameters[11] + 
+				"\n\tdelta = \t\t" + Math.abs(bestParameters[12]) +			
 				"\n\tvolatilityOne = \t" + Math.exp(bestParameters[13]) + 
 				"\n\tvolatilityTwo = \t" + Math.exp(bestParameters[14])
 						);
@@ -560,8 +572,8 @@ public class LevenbergCalibration {
 																	Math.exp(bestParameters[8]),
 																	Math.exp(bestParameters[9]),
 																	Math.exp(bestParameters[10]),
-																	-Math.exp(bestParameters[11]),
-																	bestParameters[12],
+																	bestParameters[11],
+																	Math.abs(bestParameters[12]),
 																	Math.exp(bestParameters[13]),
 																	Math.exp(bestParameters[14]),
 																	sheetdata.getForwardSwapRate(maturities[i], tenor)+shift,
@@ -653,7 +665,7 @@ public class LevenbergCalibration {
 				"\n\tlambdaZero = \t\t" + Math.exp(bestParameters[4]) + 
 				"\n\tlambdaOne = \t\t" + Math.exp(bestParameters[5]) + 
 				"\n\tk = \t\t\t" + bestParameters[6] + 
-				"\n\tdelta = \t\t" + bestParameters[7] +
+				"\n\tdelta = \t\t" + Math.abs(bestParameters[7]) +
 				"\n\tvolatility = \t\t" + Math.exp(bestParameters[8]) 
 						);
 
@@ -674,7 +686,7 @@ public class LevenbergCalibration {
 																Math.exp(bestParameters[4]),
 																Math.exp(bestParameters[5]),
 																bestParameters[6],
-																bestParameters[7],
+																Math.abs(bestParameters[7]),
 																Math.exp(bestParameters[8]),//[i],
 																sheetdata.getForwardSwapRate(maturities[i], tenor)+shift,
 																0,

@@ -18,7 +18,7 @@ public class TwoFactorBatesModelCF implements ProcessCharacteristicFunctionInter
 	private final double k;
 	private final double delta;
 	private final double[] volatility;
-	private final double initialPrice;
+	private final double initialValue;
 	private final double riskFreeRate;
 	private final double discountFactor;
 	
@@ -46,7 +46,7 @@ public class TwoFactorBatesModelCF implements ProcessCharacteristicFunctionInter
 		this.k				= k;
 		this.delta			= delta;
 		this.volatility		= volatility;
-		this.initialPrice	= initialPrice;
+		this.initialValue	= initialPrice;
 		this.riskFreeRate	= riskFreeRate;
 		this.discountFactor	= discountFactor;
 		
@@ -82,7 +82,7 @@ public class TwoFactorBatesModelCF implements ProcessCharacteristicFunctionInter
 		this.k				= k;
 		this.delta			= delta;
 		this.volatility		= new double[]{volatilityOne, volatilityTwo};
-		this.initialPrice	= initialPrice;
+		this.initialValue	= initialPrice;
 		this.riskFreeRate	= riskFreeRate;
 		this.discountFactor	= discountFactor;
 		
@@ -112,7 +112,7 @@ public class TwoFactorBatesModelCF implements ProcessCharacteristicFunctionInter
 		this.k				= k;
 		this.delta			= delta;
 		this.volatility		= new double[]{volatility};
-		this.initialPrice	= initialPrice;
+		this.initialValue	= initialPrice;
 		this.riskFreeRate	= riskFreeRate;
 		this.discountFactor	= discountFactor;
 		
@@ -209,24 +209,41 @@ public class TwoFactorBatesModelCF implements ProcessCharacteristicFunctionInter
                 }
                 
 
-                if(numberOfFactors == 2){
-                	return	A[0]
-                				.add(A[1])
-                				.add(B[0].multiply(volatility[0]))
-                				.add(B[1].multiply(volatility[1]))
-                				.add(C.multiply(time*lambda[0]))
-                				.add(iargument.multiply(Math.log(initialPrice)+time*riskFreeRate))
-                				.exp()
-                				.multiply(discountFactor);
-                }
-                else{
-                    return	A[0]
-                    			.add(B[0].multiply(volatility[0]))
-                    			.add(C.multiply(time*lambda[0]))
-                    			.add(iargument.multiply(Math.log(initialPrice)+time*riskFreeRate))
-                    			.exp()
-                    			.multiply(discountFactor);
-                }
+//                if(numberOfFactors == 2){
+//                	return	A[0]
+//                				.add(A[1])
+//                				.add(B[0].multiply(volatility[0]))
+//                				.add(B[1].multiply(volatility[1]))
+//                				.add(C.multiply(time*lambda[0]))
+//                				.add(iargument.multiply(Math.log(initialPrice)+time*riskFreeRate))
+//                				.exp()
+//                				.multiply(discountFactor);
+//                }
+//                else{
+//                    return	A[0]
+//                    			.add(B[0].multiply(volatility[0]))
+//                    			.add(C.multiply(time*lambda[0]))
+//                    			.add(iargument.multiply(Math.log(initialPrice)+time*riskFreeRate))
+//                    			.exp()
+//                    			.multiply(discountFactor);
+//                }
+				Complex characteristicFunction =
+						A[0]
+								.add(B[0].multiply(volatility[0]))
+								.add(C.multiply(time*lambda[0]))
+								.add(iargument.multiply(Math.log(initialValue)+time*riskFreeRate))
+								.add(-riskFreeRate*time);
+
+				if(numberOfFactors == 2) {
+					characteristicFunction = characteristicFunction
+							.add(A[1])
+							.add(B[1].multiply(volatility[1]));
+				}
+
+				characteristicFunction = characteristicFunction.exp().multiply(discountFactor);;
+
+				return characteristicFunction;
+				
             };
         };
 	}
