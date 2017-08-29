@@ -144,12 +144,14 @@ public class TwoFactorBatesModelCF implements ProcessCharacteristicFunctionInter
                 				.multiply(new Complex(1+k).pow(iargument))
                 				.add(-1)							
                 				.add(iargument.multiply(-k));
+                
+                
                
                 for(int i = 0; i < numberOfFactors; i++){
                 	
-
+                	if(sigma[i] != 0){
                 	
-                	gamma[i] = iargument
+                		gamma[i] = iargument
                 				.multiply(rho[i]*sigma[i])
                 				.subtract(beta[i])
                 				.pow(2)
@@ -164,7 +166,7 @@ public class TwoFactorBatesModelCF implements ProcessCharacteristicFunctionInter
                 				;
                 	
                 	
-                	A[i] =
+                		A[i] =
                 			iargument
                 			.multiply(rho[i] * sigma[i])
                 			.subtract(beta[i])
@@ -186,7 +188,7 @@ public class TwoFactorBatesModelCF implements ProcessCharacteristicFunctionInter
                 					)
                 			;
                 	
-                	B[i] = iargument
+                		B[i] = iargument
                 			.multiply(iargument)
                 			.add(iargument.multiply(-1))
                 			.multiply(0.5)
@@ -205,6 +207,29 @@ public class TwoFactorBatesModelCF implements ProcessCharacteristicFunctionInter
                 							)
                 					)
                 			;
+                	}else{
+                		B[i] = iargument
+                    		.multiply(iargument)
+                    		.add(iargument.multiply(-1))
+                    		.multiply(0.5)
+                    		.add(C.multiply(lambda[i+1]))
+                    		.divide(-beta[i])
+                    		.multiply(Math.exp(-beta[i]*time)-1)
+                    		;
+                		
+                		
+                		A[i] = iargument
+                        	.multiply(iargument)
+                        	.add(iargument.multiply(-1))
+                        	.multiply(0.5)
+                        	.add(C.multiply(lambda[i+1]))
+                			.multiply(alpha[i]/-beta[i])
+                			.multiply((-1/beta[i]) * Math.exp(-beta[i]*time) - time + (1/beta[i]))
+                			;
+                		
+                		
+                	}
+                		
                 	
                 }
                 
