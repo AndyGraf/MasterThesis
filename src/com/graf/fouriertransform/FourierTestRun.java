@@ -33,7 +33,7 @@ public class FourierTestRun {
 
     	double theta = volatility*volatility;
     	double kappa = 1.0;
-    	double xi = 0.3;
+    	double xi = 0.00;
     	double rho = 0.0;
 
     	Scheme scheme = Scheme.FULL_TRUNCATION;
@@ -43,7 +43,7 @@ public class FourierTestRun {
     	int		numberOfTimeSteps	= 100;
     	double	deltaT				= 0.02;
 
-    	int		seed				= 3515;
+    	int		seed				= 3815;
 
     	// Product properties
     	double	optionMaturity = 2.0;

@@ -7,39 +7,57 @@ import java.util.Scanner;
 import net.finmath.exception.CalculationException;
 import net.finmath.fouriermethod.products.AbstractProductFourierTransform;
 import net.finmath.fouriermethod.products.EuropeanOption;
+import net.finmath.functions.AnalyticFormulas;
 import net.finmath.optimizer.LevenbergMarquardt;
 import net.finmath.optimizer.SolverException;
 
-public class LevenbergCalibration {
+//  Calibration of the One- and Two-factor Bates and Heston models as well as the SABR model 
+//  towards the swaption implied volatility surface.
+//
+//  The function net.finmath.functions.AnalyticFormulas.bachelierOptionImpliedVolatility used in this class has been adjusted.
+//  optionValue has been adjusted to 2*optionValue: 
+//  double volatilityUpperBound = (2*optionValue + Math.abs(forward-optionStrike)) / Math.sqrt(optionMaturity) / payoffUnit;
+//  found in line (845) of version 1.9
+//
+//  The Levenberg-Marquardt algorithm uses the damping of Levenberg
+//  (JTJ + lambda Id) = JT error
+//  alphaElement += 1 * lambda;
+//  instead of the originally implemented version of Marquardt
+//  (JTJ + lambda diag(JTJ)) = JT error
+//	alphaElement *= 1 + lambda;
+//  found in line (688) of version 1.6 net.finmath.optimizer.LevenbergMarquardt
+
+public class LevenbergCalibrationBachelierVolatility {
 	
 	//maximum number of iterations for the LM-algorithm
 	static int maxIteration = 150;
 	
-	static DecimalFormat df = new DecimalFormat("#.###");
+	static DecimalFormat df = new DecimalFormat("#.####");
+	static DecimalFormat error = new DecimalFormat("#.#########");
     
 	//defining the options
 	static int[] maturities = {1, 2, 5, 10, 15, 20};
-	static double[] strikes = {-0.01,-0.005, -0.0025, 0, 0.0025, 0.005, 0.01, 0.015, 0.02};
+	static double[] strikes = {-1,-0.5, -0.25, 0, 0.25, 0.5, 1, 1.5, 2};
 	static int tenor;
 	static double shift;
 	
 	
 	static double [] targetValues = new double[maturities.length*strikes.length];
-	static double [] targetVolatilities = new double[maturities.length*strikes.length];
+	static double [] targetPrices = new double[maturities.length*strikes.length];
 	static double [] weights = new double[maturities.length*strikes.length];
 	static double [] values = new double[maturities.length*strikes.length];
 
 	static AbstractProductFourierTransform[][] europeanMatrix = new AbstractProductFourierTransform[maturities.length][strikes.length];
 	
-    
+    //jump parameters for the heston models
     static double lambdaZero	= 0;
     static double lambdaOne		= 0;
     static double lambdaTwo		= 0;
     static double k				= 0;
     static double delta			= 0;
     
-    //set beta equal to 1 since the market volatilities are log-normal
-    static double sabrBeta	    	= 1;
+    //we use a SABR model without displacement
+    static double sabrDisplacement = 0;
 	
 
 	public static void main(String[] args) throws IOException {
@@ -60,7 +78,7 @@ public class LevenbergCalibration {
 		
 		//setting the market data
 		tenor = 10;
-		if(tenor == 2){shift = 0.0265;}else if(tenor == 5){shift = 0.016;}else if(tenor == 10){shift = 0.015;}else{shift = 0;};
+		if(tenor == 2){shift = 2.65;}else if(tenor == 5){shift = 1.6;}else if(tenor == 10){shift = 1.5;}else{shift = 0;};
 		double[][] volatilities = sheetdata.getSmileData(tenor);
 		for(int w = 0; w < weights.length; w++){weights[w] = 1;};
 
@@ -71,10 +89,21 @@ public class LevenbergCalibration {
 		for(int i = 0; i < maturities.length; i++){
 			System.out.print(maturities[i] + "  \t");
 			for(int j = 0; j < strikes.length; j++){
-				targetVolatilities[i*strikes.length + j] = volatilities[i][j];
-				targetValues[i*strikes.length + j] = net.finmath.functions.AnalyticFormulas.blackScholesGeneralizedOptionValue(sheetdata.getForwardSwapRate(maturities[i], tenor)+shift,targetVolatilities[i*strikes.length + j],maturities[i], strikes[j]+shift,sheetdata.getSwapAnnuity(maturities[i], tenor));
+				
+				
+				targetPrices[i*strikes.length + j] = net.finmath.functions.AnalyticFormulas.blackScholesGeneralizedOptionValue(sheetdata.getForwardSwapRate(maturities[i], tenor)+shift,volatilities[i][j],maturities[i], strikes[j]+shift,sheetdata.getSwapAnnuity(maturities[i], tenor));
+				
+				//calculate target bachelier implied volatilities
+				targetValues[i*strikes.length + j] = net.finmath.functions.AnalyticFormulas.bachelierOptionImpliedVolatility(
+						sheetdata.getForwardSwapRate(maturities[i], tenor)+shift,
+						maturities[i],
+						strikes[j]+shift,
+						sheetdata.getSwapAnnuity(maturities[i], tenor),
+						targetPrices[i*strikes.length + j]);
+				
 				europeanMatrix[i][j] = new EuropeanOption(maturities[i], strikes[j]+shift);
-				System.out.print(df.format(targetValues[i*strikes.length + j]*100) + "     \t");
+				System.out.print(df.format(targetValues[i*strikes.length + j]) + "     \t");
+
 			}
 			System.out.println();
 		}
@@ -99,24 +128,32 @@ public class LevenbergCalibration {
 				break;
 			case 5:
 				double[] sabrParameters = sabr(sheetdata);
-				System.out.println("Root mean squared error: " + df.format(Math.sqrt((printSABR(sabrParameters, sheetdata)/(maturities.length*strikes.length)))));
+				System.out.println("Root mean squared error: " + error.format(Math.sqrt((printSABR(sabrParameters, sheetdata)/(maturities.length*strikes.length)))));
 				break;
 			case 6:
-				double error = 0;
+				double err = 0;
 				System.out.println("\nSwaption prices calculated with a maturity-wise calibration and the error in brackets:\n");
 				System.out.println("Maturty" + "\t\t\t\t\t\t\t\t Strikes\n" + "\t-1%      \t-0.5%    \t-0.25%    \t0%      \t0.25%      \t0.5%      \t1%      \t1.5%      \t2%\n");
 				double[] mTargetValues = new double[strikes.length];
-				double[] mTargetVolatilities = new double[strikes.length];
 				for(int i = 0; i<maturities.length; i++){
 					int[] maturity = {maturities[i]};
 					for(int j = 0; j < strikes.length; j++){
 						mTargetValues[j] = targetValues[i*strikes.length + j];
-						mTargetVolatilities[j] = volatilities[i][j];
 					}
-					double[] mSabrParameters = sabr(sheetdata, maturity, mTargetVolatilities);
-					error += printSABR(mSabrParameters, sheetdata, maturity, mTargetValues);
+					double[] mSabrParameters = sabr(sheetdata, maturity, mTargetValues);
+					
+
+//					 optional print for the maturity-wise parameters
+//					System.out.println(
+//							"\n\talpha = \t\t" + Math.exp(mSabrParameters[0]) + 
+//							";\n\tbeta  = \t\t" + Math.exp(-mSabrParameters[1]*mSabrParameters[1]) + 
+//							";\n\trho = \t\t\t" + Math.tanh(0.5*mSabrParameters[2]) + 
+//							";\n\tv = \t\t\t" + Math.exp(mSabrParameters[3]) + ";"
+//					);
+					
+					err += printSABR(mSabrParameters, sheetdata, maturity, mTargetValues);
 				}
-				System.out.println("Root mean squared error: " + df.format(Math.sqrt((error/(maturities.length*strikes.length)))));
+				System.out.println("Root mean squared error: " + error.format(Math.sqrt((err/(maturities.length*strikes.length)))));
 				break;
 		}
 
@@ -134,6 +171,9 @@ public class LevenbergCalibration {
 	
 	
 	
+	//calibration of the 5 models with Levenberg-Marquardt, returning the best fit parameters
+	
+	
 	
 	public static double[] twoFactorBates(SABRdata sheetdata){
 		
@@ -145,22 +185,21 @@ public class LevenbergCalibration {
         double betaTwo      = 1.76;
         double sigmaOne     = 0.582;
         double sigmaTwo     = 0.346;
-        double rhoOne       = -0.848;
-        double rhoTwo       = -0.402;
+        double tanhRhoOne   = -0.848;
+        double tanhRhoTwo  	= -0.402;
+        double rhoOne		= Math.log( ( 1.0 + tanhRhoOne) / ( 1 - tanhRhoOne));
+        double rhoTwo		= Math.log( ( 1.0 + tanhRhoTwo) / ( 1 - tanhRhoTwo));
+
         
         double lambdaZero   = 0.1143;
-        double lambdaOne    = 81.56;
+        double lambdaOne    = 1.56;
         double lambdaTwo    = 0.28;
         double k       		= -0.057;
         double delta   		= 0.102;
         
-        double volatilityOne   = 0.00963;
-        double volatilityTwo   = 0.01352;   
-        
-       
-        
-        
-        
+        double volatilityOne   = 0.10963;
+        double volatilityTwo   = 0.001352;   
+
         
         double[] initialParameters = new double[]{			
             	Math.log(alphaOne),
@@ -189,7 +228,12 @@ public class LevenbergCalibration {
 		 		for(int i = 0; i < maturities.length; i++){
 					for(int j = 0; j < strikes.length; j++){
 						try {
-							values[i*strikes.length + j] = europeanMatrix[i][j].getValue(
+							values[i*strikes.length + j] = 	net.finmath.functions.AnalyticFormulas.bachelierOptionImpliedVolatility(
+									sheetdata.getForwardSwapRate(maturities[i], tenor)+shift,
+									maturities[i],
+									strikes[j]+shift,
+									sheetdata.getSwapAnnuity(maturities[i], tenor),
+									europeanMatrix[i][j].getValue(
 																new TwoFactorBatesModelCF(
 																Math.exp(parameters[0]),
 																Math.exp(parameters[1]),
@@ -197,8 +241,8 @@ public class LevenbergCalibration {
 																Math.exp(parameters[3]),																	
 																Math.exp(parameters[4]),
 																Math.exp(parameters[5]),
-																parameters[6],
-																parameters[7],
+																Math.tanh(0.5*parameters[6]),
+																Math.tanh(0.5*parameters[7]),
 																Math.exp(parameters[8]),
 																Math.exp(parameters[9]),
 																Math.exp(parameters[10]),
@@ -210,6 +254,7 @@ public class LevenbergCalibration {
 																0,
 																sheetdata.getSwapAnnuity(maturities[i], tenor))
 															)
+									)
 							;
 						} catch (IOException e) {
 							e.printStackTrace();
@@ -248,8 +293,10 @@ public class LevenbergCalibration {
         double betaTwo      = 5.58;
         double sigmaOne     = 1.039;
         double sigmaTwo     = 0.667;
-        double rhoOne       = -0.775;
-        double rhoTwo       = -0.382;
+        double tanhRhoOne   = -0.775;
+        double tanhRhoTwo  	= -0.382;
+        double rhoOne		= Math.log( ( 1.0 + tanhRhoOne) / ( 1 - tanhRhoOne));
+        double rhoTwo		= Math.log( ( 1.0 + tanhRhoTwo) / ( 1 - tanhRhoTwo));
         
         double volatilityOne   = 0.00963;
         double volatilityTwo   = 0.01352;      
@@ -273,7 +320,12 @@ public class LevenbergCalibration {
 		 		for(int i = 0; i < maturities.length; i++){
 					for(int j = 0; j < strikes.length; j++){
 						try {
-							values[i*strikes.length + j] = europeanMatrix[i][j].getValue(
+							values[i*strikes.length + j] = net.finmath.functions.AnalyticFormulas.bachelierOptionImpliedVolatility(
+									sheetdata.getForwardSwapRate(maturities[i], tenor)+shift,
+									maturities[i],
+									strikes[j]+shift,
+									sheetdata.getSwapAnnuity(maturities[i], tenor),
+									europeanMatrix[i][j].getValue(
 																new TwoFactorBatesModelCF(
 																Math.exp(parameters[0]),
 																Math.exp(parameters[1]),
@@ -281,8 +333,8 @@ public class LevenbergCalibration {
 																Math.exp(parameters[3]),																	
 																Math.exp(parameters[4]),
 																Math.exp(parameters[5]),
-																parameters[6],
-																parameters[7],
+																Math.tanh(0.5*parameters[6]),
+																Math.tanh(0.5*parameters[7]),
 																lambdaZero,
 																lambdaOne,
 																lambdaTwo,
@@ -294,6 +346,7 @@ public class LevenbergCalibration {
 																0,
 																sheetdata.getSwapAnnuity(maturities[i], tenor))
 															)
+									)
 							;
 						} catch (IOException e) {
 							e.printStackTrace();
@@ -329,7 +382,8 @@ public class LevenbergCalibration {
         double alphaOne     = 0.049;
         double betaOne      = 2.45;
         double sigmaOne     = 0.378;
-        double rhoOne       = -0.545;
+        double tanhRhoOne   = -0.545;
+        double rhoOne		= Math.log( ( 1.0 + tanhRhoOne) / ( 1 - tanhRhoOne));
         
         double lambdaZero   = 0;
         double lambdaOne	= 27.19;
@@ -356,12 +410,17 @@ public class LevenbergCalibration {
 		 		for(int i = 0; i < maturities.length; i++){
 					for(int j = 0; j < strikes.length; j++){
 						try {
-							values[i*strikes.length + j] = europeanMatrix[i][j].getValue(
+							values[i*strikes.length + j] = net.finmath.functions.AnalyticFormulas.bachelierOptionImpliedVolatility(
+									sheetdata.getForwardSwapRate(maturities[i], tenor)+shift,
+									maturities[i],
+									strikes[j]+shift,
+									sheetdata.getSwapAnnuity(maturities[i], tenor),
+									europeanMatrix[i][j].getValue(
 																new TwoFactorBatesModelCF(
 																Math.exp(parameters[0]),
 																Math.exp(parameters[1]),
 																Math.exp(parameters[2]),
-																parameters[3],
+																Math.tanh(0.5*parameters[3]),
 																Math.exp(parameters[4]),
 																Math.exp(parameters[5]),
 																parameters[6],
@@ -371,6 +430,7 @@ public class LevenbergCalibration {
 																0,
 																sheetdata.getSwapAnnuity(maturities[i], tenor))
 															)
+									)
 							;
 						} catch (IOException e) {
 							e.printStackTrace();
@@ -407,7 +467,8 @@ public class LevenbergCalibration {
         double alpha		= 0.1;
         double beta			= 1.49;
         double sigma		= 0.742;
-        double rho			= -0.571;
+        double tanhRho		= -0.571;
+        double rho			= Math.log( ( 1.0 + tanhRho) / ( 1 - tanhRho));
 
         double volatilityOne   = 0.00963;          
         
@@ -426,12 +487,17 @@ public class LevenbergCalibration {
 		 		for(int i = 0; i < maturities.length; i++){
 					for(int j = 0; j < strikes.length; j++){
 						try {
-							values[i*strikes.length + j] = europeanMatrix[i][j].getValue(
+							values[i*strikes.length + j] = net.finmath.functions.AnalyticFormulas.bachelierOptionImpliedVolatility(
+									sheetdata.getForwardSwapRate(maturities[i], tenor)+shift,
+									maturities[i],
+									strikes[j]+shift,
+									sheetdata.getSwapAnnuity(maturities[i], tenor),
+									europeanMatrix[i][j].getValue(
 																new TwoFactorBatesModelCF(
 																Math.exp(parameters[0]),
 																Math.exp(parameters[1]),
 																Math.exp(parameters[2]),
-																parameters[3],
+																Math.tanh(0.5*parameters[3]),
 																lambdaZero,
 																lambdaOne,
 																k,
@@ -441,6 +507,7 @@ public class LevenbergCalibration {
 																0,
 																sheetdata.getSwapAnnuity(maturities[i], tenor))
 															)
+									)
 							;
 						} catch (IOException e) {
 							e.printStackTrace();
@@ -471,23 +538,27 @@ public class LevenbergCalibration {
 	
 	public static double[] sabr(SABRdata sheetdata) throws IOException{
 		
-		return sabr(sheetdata, maturities, targetVolatilities);
+		return sabr(sheetdata, maturities, targetValues);
 	}
 	
 	public static double[] sabr(SABRdata sheetdata, int [] maturities, double[] targetVolatilities) throws IOException{
 		
 		//initial parameters 
 		
-        double alpha	    = 0.926;
-        double rho      	= -0.52;
-        double sigma   		= 0.073;
+        double alpha	    = 0.2;
+        double beta 		= 1;
+        double rho      	= -0.3;
+        double v   			= 0.25;
+
 		
 
         
 		double[] initialParameters = new double[]{			
         		Math.log(alpha),
+        		beta,
         		rho,
-        		Math.log(sigma)
+        		Math.log(v),
+
             };
 		
         
@@ -497,11 +568,12 @@ public class LevenbergCalibration {
 		 		for(int i = 0; i < maturities.length; i++){
 					for(int j = 0; j < strikes.length; j++){
 							try {
-								values[i*strikes.length + j] = SABRVolatility.getVolatility(
+								values[i*strikes.length + j] = AnalyticFormulas.sabrBerestyckiNormalVolatilityApproximation(
 																	Math.exp(parameters[0]),
-																	sabrBeta,
-																	parameters[1],
-																	Math.exp(parameters[2]),
+																	Math.exp(-parameters[1]*parameters[1]),
+																	Math.tanh(0.5*parameters[2]),
+																	Math.exp(parameters[3]),
+																	sabrDisplacement,
 																	sheetdata.getForwardSwapRate(maturities[i], tenor)+shift,
 																	strikes[j]+shift,
 																	maturities[i]);
@@ -532,6 +604,12 @@ public class LevenbergCalibration {
 	
 	
 	
+	
+	
+	
+	//print methods to show the volatility surface with the calibrated parameters
+	
+	
 	public static void printTwoFactorBates(double[] bestParameters, SABRdata sheetdata) throws IOException{
 		System.out.println( "\n\tThe best fit paramters for the Two-factor Bates model are: \n\n" +
 				"\talphaOne = \t\t" + Math.exp(bestParameters[0]) + 
@@ -540,8 +618,8 @@ public class LevenbergCalibration {
 				"\n\tbetaTwo = \t\t" + Math.exp(bestParameters[3]) + 
 				"\n\tsigmaOne = \t\t" + Math.exp(bestParameters[4]) + 
 				"\n\tsigmaTwo = \t\t" + Math.exp(bestParameters[5]) + 
-				"\n\trhoOne = \t\t" + bestParameters[6] + 
-				"\n\trhoTwo = \t\t" + bestParameters[7] + 
+				"\n\trhoOne = \t\t" + Math.tanh(0.5*bestParameters[6]) + 
+				"\n\trhoTwo = \t\t" + Math.tanh(0.5*bestParameters[7]) + 
 				"\n\tlambdaZero = \t\t" + Math.exp(bestParameters[8]) + 
 				"\n\tlambdaOne = \t\t" + Math.exp(bestParameters[9])  +
 				"\n\tlambdaTwo = \t\t" + Math.exp(bestParameters[10]) + 
@@ -554,12 +632,19 @@ public class LevenbergCalibration {
 
 		System.out.println("\nSwaption prices calculated with the calibrated parameters and the error in brackets:\n");
 		System.out.println("Maturty" + "\t\t\t\t\t\t\t\t Strikes\n" + "\t-1%      \t-0.5%    \t-0.25%    \t0%      \t0.25%      \t0.5%      \t1%      \t1.5%      \t2%\n");
+		
 		double squaredError = 0;
+		
 		for(int i = 0; i < maturities.length; i++){
 			System.out.print(maturities[i] + "  \t");
 			for(int j = 0; j < strikes.length; j++){
 				try {
-					values[i*strikes.length + j] = europeanMatrix[i][j].getValue(
+					values[i*strikes.length + j] = net.finmath.functions.AnalyticFormulas.bachelierOptionImpliedVolatility(
+							sheetdata.getForwardSwapRate(maturities[i], tenor)+shift,
+							maturities[i],
+							strikes[j]+shift,
+							sheetdata.getSwapAnnuity(maturities[i], tenor),
+							europeanMatrix[i][j].getValue(
 															new TwoFactorBatesModelCF(
 																	Math.exp(bestParameters[0]),
 																	Math.exp(bestParameters[1]),
@@ -567,8 +652,8 @@ public class LevenbergCalibration {
 																	Math.exp(bestParameters[3]),
 																	Math.exp(bestParameters[4]),
 																	Math.exp(bestParameters[5]),
-																	bestParameters[6],
-																	bestParameters[7],
+																	Math.tanh(0.5*bestParameters[6]),
+																	Math.tanh(0.5*bestParameters[7]),
 																	Math.exp(bestParameters[8]),
 																	Math.exp(bestParameters[9]),
 																	Math.exp(bestParameters[10]),
@@ -579,20 +664,20 @@ public class LevenbergCalibration {
 																	sheetdata.getForwardSwapRate(maturities[i], tenor)+shift,
 																	0,
 																	sheetdata.getSwapAnnuity(maturities[i], tenor))
-													);
+													));
 				} catch (CalculationException e) {
 					e.printStackTrace();
 				}
-				squaredError +=100*(values[i*strikes.length + j]-targetValues[i*strikes.length + j])*100*(values[i*strikes.length + j]-targetValues[i*strikes.length + j]);
-				System.out.print(df.format(values[i*strikes.length + j]*100) + "       \t");
+				squaredError +=(values[i*strikes.length + j]-targetValues[i*strikes.length + j])*(values[i*strikes.length + j]-targetValues[i*strikes.length + j]);
+				System.out.print(df.format(values[i*strikes.length + j]) + "       \t");
 			}
 			System.out.print("\n  \t");
 			for(int j = 0; j < strikes.length; j++){
-				System.out.print("(" + df.format(100*Math.abs((values[i*strikes.length + j]-targetValues[i*strikes.length + j]))) + ")     \t");
+				System.out.print("(" + df.format(Math.abs((values[i*strikes.length + j]-targetValues[i*strikes.length + j]))) + ")     \t");
 			}
 			System.out.print("\n\n");
 		}
-		System.out.println("Root mean squared error: " + df.format(Math.sqrt((squaredError/(maturities.length*strikes.length)))));
+		System.out.println("Root mean squared error: " + error.format(Math.sqrt((squaredError/(maturities.length*strikes.length)))));
 
 	}
 	
@@ -605,8 +690,8 @@ public class LevenbergCalibration {
 				"\n\tbetaTwo = \t\t" + Math.exp(bestParameters[3]) + 
 				"\n\tsigmaOne = \t\t" + Math.exp(bestParameters[4]) + 
 				"\n\tsigmaTwo = \t\t" + Math.exp(bestParameters[5]) + 
-				"\n\trhoOne = \t\t" + bestParameters[6] + 
-				"\n\trhoTwo = \t\t" + bestParameters[7] + 
+				"\n\trhoOne = \t\t" + Math.tanh(0.5*bestParameters[6]) + 
+				"\n\trhoTwo = \t\t" + Math.tanh(0.5*bestParameters[7]) + 
 				"\n\tvolatilityOne = \t" + Math.exp(bestParameters[8]) + 
 				"\n\tvolatilityTwo = \t" + Math.exp(bestParameters[9])
 						);
@@ -614,12 +699,19 @@ public class LevenbergCalibration {
 
 		System.out.println("\nSwaption prices calculated with the calibrated parameters and the error in brackets:\n");
 		System.out.println("Maturty" + "\t\t\t\t\t\t\t\t Strikes\n" + "\t-1%      \t-0.5%    \t-0.25%    \t0%      \t0.25%      \t0.5%      \t1%      \t1.5%      \t2%\n");
+		
 		double squaredError = 0;
+		
 		for(int i = 0; i < maturities.length; i++){
 			System.out.print(maturities[i] + "  \t");
 			for(int j = 0; j < strikes.length; j++){
 				try {
-					values[i*strikes.length + j] = europeanMatrix[i][j].getValue(
+					values[i*strikes.length + j] = net.finmath.functions.AnalyticFormulas.bachelierOptionImpliedVolatility(
+							sheetdata.getForwardSwapRate(maturities[i], tenor)+shift,
+							maturities[i],
+							strikes[j]+shift,
+							sheetdata.getSwapAnnuity(maturities[i], tenor),
+							europeanMatrix[i][j].getValue(
 															new TwoFactorBatesModelCF(
 																	Math.exp(bestParameters[0]),
 																	Math.exp(bestParameters[1]),
@@ -627,8 +719,8 @@ public class LevenbergCalibration {
 																	Math.exp(bestParameters[3]),
 																	Math.exp(bestParameters[4]),
 																	Math.exp(bestParameters[5]),
-																	bestParameters[6],
-																	bestParameters[7],
+																	Math.tanh(0.5*bestParameters[6]),
+																	Math.tanh(0.5*bestParameters[7]),
 																	lambdaZero,
 																	lambdaOne,
 																	lambdaTwo,
@@ -639,20 +731,20 @@ public class LevenbergCalibration {
 																	sheetdata.getForwardSwapRate(maturities[i], tenor)+shift,
 																	0,
 																	sheetdata.getSwapAnnuity(maturities[i], tenor))
-													);
+													));
 				} catch (CalculationException e) {
 					e.printStackTrace();
 				}
-				squaredError +=100*(values[i*strikes.length + j]-targetValues[i*strikes.length + j])*100*(values[i*strikes.length + j]-targetValues[i*strikes.length + j]);
-				System.out.print(df.format(values[i*strikes.length + j]*100) + "       \t");
+				squaredError +=(values[i*strikes.length + j]-targetValues[i*strikes.length + j])*(values[i*strikes.length + j]-targetValues[i*strikes.length + j]);
+				System.out.print(df.format(values[i*strikes.length + j]) + "       \t");
 			}
 			System.out.print("\n  \t");
 			for(int j = 0; j < strikes.length; j++){
-				System.out.print("(" + df.format(100*Math.abs((values[i*strikes.length + j]-targetValues[i*strikes.length + j]))) + ")     \t");
+				System.out.print("(" + df.format(Math.abs((values[i*strikes.length + j]-targetValues[i*strikes.length + j]))) + ")     \t");
 			}
 			System.out.print("\n\n");
 		}
-		System.out.println("Root mean squared error: " + df.format(Math.sqrt((squaredError/(maturities.length*strikes.length)))));
+		System.out.println("Root mean squared error: " + error.format(Math.sqrt((squaredError/(maturities.length*strikes.length)))));
 
 	}
 	
@@ -661,7 +753,7 @@ public class LevenbergCalibration {
 				"\talpha = \t\t" + Math.exp(bestParameters[0]) + 
 				"\n\tbeta = \t\t\t" + Math.exp(bestParameters[1]) + 
 				"\n\tsigma = \t\t" + Math.exp(bestParameters[2]) + 
-				"\n\trho = \t\t\t" + bestParameters[3] + 
+				"\n\trho = \t\t\t" + Math.tanh(0.5*bestParameters[3]) + 
 				"\n\tlambdaZero = \t\t" + Math.exp(bestParameters[4]) + 
 				"\n\tlambdaOne = \t\t" + Math.exp(bestParameters[5]) + 
 				"\n\tk = \t\t\t" + bestParameters[6] + 
@@ -672,17 +764,24 @@ public class LevenbergCalibration {
 
 		System.out.println("\nSwaption prices calculated with the calibrated parameters and the error in brackets:\n");
 		System.out.println("Maturty" + "\t\t\t\t\t\t\t\t Strikes\n" + "\t-1%      \t-0.5%    \t-0.25%    \t0%      \t0.25%      \t0.5%      \t1%      \t1.5%      \t2%\n");
+		
 		double squaredError = 0;
+		
 		for(int i = 0; i < maturities.length; i++){
 			System.out.print(maturities[i] + "  \t");
 			for(int j = 0; j < strikes.length; j++){
 				try {
-					values[i*strikes.length + j] = europeanMatrix[i][j].getValue(
+					values[i*strikes.length + j] = net.finmath.functions.AnalyticFormulas.bachelierOptionImpliedVolatility(
+							sheetdata.getForwardSwapRate(maturities[i], tenor)+shift,
+							maturities[i],
+							strikes[j]+shift,
+							sheetdata.getSwapAnnuity(maturities[i], tenor),
+							europeanMatrix[i][j].getValue(
 														new TwoFactorBatesModelCF(
 																Math.exp(bestParameters[0]),
 																Math.exp(bestParameters[1]),
 																Math.exp(bestParameters[2]),
-																bestParameters[3],
+																Math.tanh(0.5*bestParameters[3]),
 																Math.exp(bestParameters[4]),
 																Math.exp(bestParameters[5]),
 																bestParameters[6],
@@ -691,20 +790,20 @@ public class LevenbergCalibration {
 																sheetdata.getForwardSwapRate(maturities[i], tenor)+shift,
 																0,
 																sheetdata.getSwapAnnuity(maturities[i], tenor))
-													);
+													));
 				} catch (CalculationException e) {
 					e.printStackTrace();
 				}
-				squaredError +=100*(values[i*strikes.length + j]-targetValues[i*strikes.length + j])*100*(values[i*strikes.length + j]-targetValues[i*strikes.length + j]);
-				System.out.print(df.format(values[i*strikes.length + j]*100) + "       \t");
+				squaredError +=(values[i*strikes.length + j]-targetValues[i*strikes.length + j])*(values[i*strikes.length + j]-targetValues[i*strikes.length + j]);
+				System.out.print(df.format(values[i*strikes.length + j]) + "       \t");
 			}
 			System.out.print("\n  \t");
 			for(int j = 0; j < strikes.length; j++){
-				System.out.print("(" + df.format(100*Math.abs((values[i*strikes.length + j]-targetValues[i*strikes.length + j]))) + ")     \t");
+				System.out.print("(" + df.format(Math.abs((values[i*strikes.length + j]-targetValues[i*strikes.length + j]))) + ")     \t");
 			}
 			System.out.print("\n\n");
 		}
-		System.out.println("Root mean squared error: " + df.format(Math.sqrt((squaredError/(maturities.length*strikes.length)))));
+		System.out.println("Root mean squared error: " + error.format(Math.sqrt((squaredError/(maturities.length*strikes.length)))));
 
 	}
 	
@@ -713,7 +812,7 @@ public class LevenbergCalibration {
 				"\talpha = \t\t" + Math.exp(bestParameters[0]) + 
 				"\n\tbeta = \t\t\t" + Math.exp(bestParameters[1]) + 
 				"\n\tsigma = \t\t" + Math.exp(bestParameters[2]) + 
-				"\n\trho = \t\t\t" + bestParameters[3] + 
+				"\n\trho = \t\t\t" + Math.tanh(0.5*bestParameters[3]) + 
 				"\n\tvolatility = \t\t" + Math.exp(bestParameters[4]) 
 						);
 						
@@ -723,16 +822,22 @@ public class LevenbergCalibration {
 		System.out.println("Maturty" + "\t\t\t\t\t\t\t\t Strikes\n" + "\t-1%      \t-0.5%    \t-0.25%    \t0%      \t0.25%      \t0.5%      \t1%      \t1.5%      \t2%\n");
 
 		double squaredError = 0;
+		
 		for(int i = 0; i < maturities.length; i++){
 			System.out.print(maturities[i] + "  \t");
 			for(int j = 0; j < strikes.length; j++){
 				try {
-					values[i*strikes.length + j] = europeanMatrix[i][j].getValue(
+					values[i*strikes.length + j] = net.finmath.functions.AnalyticFormulas.bachelierOptionImpliedVolatility(
+							sheetdata.getForwardSwapRate(maturities[i], tenor)+shift,
+							maturities[i],
+							strikes[j]+shift,
+							sheetdata.getSwapAnnuity(maturities[i], tenor),
+							europeanMatrix[i][j].getValue(
 														new TwoFactorBatesModelCF(
 																Math.exp(bestParameters[0]),
 																Math.exp(bestParameters[1]),
 																Math.exp(bestParameters[2]),
-																bestParameters[3],
+																Math.tanh(0.5*bestParameters[3]),
 																lambdaZero,
 																lambdaOne,
 																k,
@@ -741,28 +846,29 @@ public class LevenbergCalibration {
 																sheetdata.getForwardSwapRate(maturities[i], tenor)+shift,
 																0,
 																sheetdata.getSwapAnnuity(maturities[i], tenor))
-													);
+													));
 				} catch (CalculationException e) {
 					e.printStackTrace();
 				}
-				squaredError +=100*(values[i*strikes.length + j]-targetValues[i*strikes.length + j])*100*(values[i*strikes.length + j]-targetValues[i*strikes.length + j]);
-				System.out.print(df.format(values[i*strikes.length + j]*100) + "       \t");
+				squaredError +=(values[i*strikes.length + j]-targetValues[i*strikes.length + j])*(values[i*strikes.length + j]-targetValues[i*strikes.length + j]);
+				System.out.print(df.format(values[i*strikes.length + j]) + "       \t");
 			}
 			System.out.print("\n  \t");
 			for(int j = 0; j < strikes.length; j++){
-				System.out.print("(" + df.format(100*Math.abs((values[i*strikes.length + j]-targetValues[i*strikes.length + j]))) + ")     \t");
+				System.out.print("(" + df.format(Math.abs((values[i*strikes.length + j]-targetValues[i*strikes.length + j]))) + ")     \t");
 			}
 			System.out.print("\n\n");
 		}
-		System.out.println("Root mean squared error: " + df.format(Math.sqrt((squaredError/(maturities.length*strikes.length)))));
+		System.out.println("Root mean squared error: " + error.format(Math.sqrt((squaredError/(maturities.length*strikes.length)))));
 
 	}
 	
 	public static double printSABR(double[] bestParameters, SABRdata sheetdata) throws IOException{
 		System.out.println( "\n\tThe best fit paramters for the SABR model are: \n\n" +
 				"\talpha = \t\t" + Math.exp(bestParameters[0]) + 
-				"\n\trho = \t\t\t" + bestParameters[1] + 
-				"\n\tv = \t\t\t" + Math.exp(bestParameters[2])
+				"\n\tbeta  = \t\t" + Math.exp(-bestParameters[1]*bestParameters[1]) + 
+				"\n\trho = \t\t\t" + Math.tanh(0.5*bestParameters[2]) + 
+				"\n\tv = \t\t\t" + Math.exp(bestParameters[3])
 						);
 		
 		System.out.println("\nSwaption prices calculated with the calibrated parameters and the error in brackets:\n");
@@ -774,26 +880,26 @@ public class LevenbergCalibration {
 	
 	public static double printSABR(double[] bestParameters, SABRdata sheetdata, int[] maturities, double[] targetValues) throws IOException{
 		
-		double [] prices = new double[maturities.length*strikes.length];
 		double squaredError = 0;
 		for(int i = 0; i < maturities.length; i++){
 			System.out.print(maturities[i] + "  \t");
 			for(int j = 0; j < strikes.length; j++){
-				values[i*strikes.length + j] = SABRVolatility.getVolatility(
+				values[i*strikes.length + j] = AnalyticFormulas.sabrBerestyckiNormalVolatilityApproximation(
 													Math.exp(bestParameters[0]),
-													sabrBeta,
-													bestParameters[1],
-													Math.exp(bestParameters[2]),
+													Math.exp(-bestParameters[1]*bestParameters[1]),
+													Math.tanh(0.5*bestParameters[2]),
+													Math.exp(bestParameters[3]),
+													sabrDisplacement,
 													sheetdata.getForwardSwapRate(maturities[i], tenor)+shift,
 													strikes[j]+shift,
 													maturities[i]);
- 				prices[i*strikes.length + j] = net.finmath.functions.AnalyticFormulas.blackScholesGeneralizedOptionValue(sheetdata.getForwardSwapRate(maturities[i], tenor)+shift,values[i*strikes.length + j],maturities[i], strikes[j]+shift,sheetdata.getSwapAnnuity(maturities[i], tenor));
-				squaredError +=100*(prices[i*strikes.length + j]-targetValues[i*strikes.length + j])*100*(prices[i*strikes.length + j]-targetValues[i*strikes.length + j]);
-				System.out.print(df.format(prices[i*strikes.length + j]*100) + "       \t");
+ 				
+				squaredError +=(values[i*strikes.length + j]-targetValues[i*strikes.length + j])*(values[i*strikes.length + j]-targetValues[i*strikes.length + j]);
+				System.out.print(df.format(values[i*strikes.length + j]) + "       \t");
 			}
 			System.out.print("\n  \t");
 			for(int j = 0; j < strikes.length; j++){
-				System.out.print("(" + df.format(100*Math.abs((prices[i*strikes.length + j]-targetValues[i*strikes.length + j]))) + ")     \t");
+				System.out.print("(" + df.format(Math.abs((values[i*strikes.length + j]-targetValues[i*strikes.length + j]))) + ")     \t");
 			}
 			System.out.print("\n\n");
 		}

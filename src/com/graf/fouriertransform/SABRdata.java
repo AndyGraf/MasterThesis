@@ -19,7 +19,7 @@ import net.finmath.time.TimeDiscretizationInterface;
 
 public class SABRdata {
 	
-	private final Sheet volatilities;
+	private final Sheet curves;
 	private final Sheet smile;
 	DiscountCurveInterface discountCurve = null;
 	ForwardCurveInterface forwardCurve = null;
@@ -31,7 +31,7 @@ public class SABRdata {
 	public SABRdata() throws IOException{
 		
 		File file = new File("src/Data.ods");
-		volatilities = SpreadSheet.createFromFile(file).getSheet(0);
+		curves = SpreadSheet.createFromFile(file).getSheet(0);
 		smile = SpreadSheet.createFromFile(file).getSheet(1);
 		
 
@@ -39,7 +39,7 @@ public class SABRdata {
 		double[][] discountCurveData = new double[rows][columns];
 		for(int i=0; i< rows;i++){
 			for(int j=0;j<columns; j++){
-				discountCurveData[i][j] = Double.parseDouble(volatilities.getValueAt(j+8, i+27).toString());
+				discountCurveData[i][j] = Double.parseDouble(curves.getValueAt(j+8, i+27).toString());
 			}
 		}
 
@@ -55,7 +55,7 @@ public class SABRdata {
 		double[][] forwardCurveData = new double[rowsForward][columns];
 		for(int i=0; i< rowsForward;i++){
 			for(int j=0;j<columns; j++){
-				forwardCurveData[i][j] = Double.parseDouble(volatilities.getValueAt(j+1, i+27).toString());
+				forwardCurveData[i][j] = Double.parseDouble(curves.getValueAt(j+1, i+27).toString());
 
 			}
 		}
@@ -77,7 +77,7 @@ public class SABRdata {
 		double[][] data = new double[rows][columns];
 		for(int i=0; i< rows;i++){
 			for(int j=0;j<columns; j++){
-				data[i][j] = Double.parseDouble(volatilities.getValueAt(j+1, i+1).toString());
+				data[i][j] = Double.parseDouble(curves.getValueAt(j+1, i+1).toString());
 			}
 		}
 		
@@ -96,7 +96,8 @@ public class SABRdata {
 		TimeDiscretizationInterface fixTenor = new TimeDiscretization(optionMaturity, optionMaturity+swapTenor, 1.0, ShortPeriodLocation.SHORT_PERIOD_AT_START);
 		TimeDiscretizationInterface floatTenor = new TimeDiscretization(optionMaturity, optionMaturity+swapTenor, periodLength, ShortPeriodLocation.SHORT_PERIOD_AT_START);
 
-		return Swap.getForwardSwapRate(fixTenor, floatTenor, forwardCurve, discountCurve);
+		//returns ForwardSwapRate in %
+		return Swap.getForwardSwapRate(fixTenor, floatTenor, forwardCurve, discountCurve)*100;
 		
 	}
 
