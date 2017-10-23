@@ -14,11 +14,6 @@ import net.finmath.optimizer.SolverException;
 //  Calibration of the One- and Two-factor Bates and Heston models as well as the SABR model 
 //  towards the swaption implied volatility surface.
 //
-//  The function net.finmath.functions.AnalyticFormulas.bachelierOptionImpliedVolatility used in this class has been adjusted.
-//  optionValue has been adjusted to 2*optionValue: 
-//  double volatilityUpperBound = (2*optionValue + Math.abs(forward-optionStrike)) / Math.sqrt(optionMaturity) / payoffUnit;
-//  found in line (845) of version 1.9
-//
 //  The Levenberg-Marquardt algorithm uses the damping of Levenberg
 //  (JTJ + lambda Id) = JT error
 //  alphaElement += 1 * lambda;
@@ -79,7 +74,10 @@ public class LevenbergCalibrationBachelierVolatility {
 		//setting the market data
 		tenor = 10;
 		if(tenor == 2){shift = 2.65;}else if(tenor == 5){shift = 1.6;}else if(tenor == 10){shift = 1.5;}else{shift = 0;};
+
 		double[][] volatilities = sheetdata.getSmileData(tenor);
+		
+		
 		for(int w = 0; w < weights.length; w++){weights[w] = 1;};
 
 
@@ -546,9 +544,9 @@ public class LevenbergCalibrationBachelierVolatility {
 		//initial parameters 
 		
         double alpha	    = 0.2;
-        double beta 		= 1;
+        double beta 		= 0.5;
         double rho      	= -0.3;
-        double v   			= 0.25;
+        double v   			= 0.025;
 
 		
 

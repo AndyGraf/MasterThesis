@@ -18,27 +18,27 @@ public class VolatilitySmilePlot {
 		
         // parameters to be replaced by the calibrated parameters
 		
-        double alphaOne = 		0.01057829966771772;
-        double alphaTwo = 		0.009128787405722911;
-        double betaOne = 		0.0666006022640223;
-        double betaTwo = 		1.6235837879480637;
-        double sigmaOne = 		0.1523803477571126;
-        double sigmaTwo = 		0.23316502414541135;
-        double rhoOne = 		-0.9460013373386712;
-        double rhoTwo = 		0.2771401117338455;
-        double lambdaZero = 	0;
-        double lambdaOne = 		0;
-        double lambdaTwo = 		0;
-        double k = 				0;
-        double delta = 			0;
-        double volatilityOne = 	0.007803940918576663;
-        double volatilityTwo = 	0.16370502442716942;
-        
+        double alphaOne = 		1.058168026131326E-4;
+        double alphaTwo = 		0.006867109677130183;
+        double betaOne = 		0.5021933073806344;
+        double betaTwo = 		0.0011499094181474838;
+        double sigmaOne = 		0.15514725394931037;
+        double sigmaTwo = 		0.09489363562326633;
+        double rhoOne = 		-0.3729490471652218;
+        double rhoTwo = 		-0.9752770154360861;
+        double lambdaZero = 	0.0046139184162780214;
+        double lambdaOne = 		24.894455318935723;
+        double lambdaTwo = 		0.17221778191218987;
+        double k = 				0.23251509950953383;
+        double delta = 			0.00237890974999215;
+        double volatilityOne = 	0.04951194402156467;
+        double volatilityTwo = 	4.10626281336595E-4;
 
+        
         // maturity and tenor
         
         double maturities 	= 1;
-        double tenor 		= 2;
+        double tenor 		= 10;
         
         
         

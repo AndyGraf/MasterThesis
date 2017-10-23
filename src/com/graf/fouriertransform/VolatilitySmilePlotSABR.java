@@ -13,15 +13,15 @@ public class VolatilitySmilePlotSABR {
 		
 		// parameters to be replaced by the calibrated parameters
 		
-        double alpha	    = 0.2;
-        double beta 		= 1;
-        double rho      	= -0.3;
-        double v   			= 0.25;
+        double alpha	    = 0.3222856232938358;
+        double beta 		= 0.7492778681596671;
+        double rho      	= -0.9999973982223452;
+        double v   			= 0.03846594129745918;
 
         // maturity and tenor
         
         double maturities 	= 1;
-        double tenor 		= 2;
+        double tenor 		= 10;
         
         
         
